@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Gradle wrapper jar is intentionally tracked; do not ignore gradle/wrapper/gradle-wrapper.jar
+
+app/build/

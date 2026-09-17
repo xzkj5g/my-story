@@ -27,17 +27,17 @@ enable independent implementation and testing of each story.
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create the Android app module skeleton per plan.md's Project Structure: `app/`
+- [X] T001 Create the Android app module skeleton per plan.md's Project Structure: `app/`
       module with `src/main/kotlin/com/example/videocompiler/{ui,domain,data,media,service}`,
       `src/test/kotlin/com/example/videocompiler/`, and
       `src/androidTest/kotlin/com/example/videocompiler/` directories, plus `app/build.gradle.kts`
       and root `settings.gradle.kts`.
-- [ ] T002 Configure `app/build.gradle.kts` dependencies: `androidx.media3:media3-transformer`,
+- [X] T002 Configure `app/build.gradle.kts` dependencies: `androidx.media3:media3-transformer`,
       `media3-effect`, `media3-common`, `media3-exoplayer`; Jetpack Compose + Activity/Lifecycle/
       ViewModel; AndroidX Core (foreground service APIs) — per plan.md's Primary Dependencies.
-- [ ] T003 Set `minSdk = 26`, and `compileSdk`/`targetSdk` to the latest stable Android SDK, plus
+- [X] T003 Set `minSdk = 26`, and `compileSdk`/`targetSdk` to the latest stable Android SDK, plus
       JVM 17 target bytecode, in `app/build.gradle.kts` (plan.md Technical Context).
-- [ ] T004 [P] Configure Kotlin linting/formatting (e.g., ktlint or detekt) in
+- [X] T004 [P] Configure Kotlin linting/formatting (e.g., ktlint or detekt) in
       `build.gradle.kts` / `config/detekt/detekt.yml`.
 
 ---

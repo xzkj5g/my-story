@@ -1,0 +1,17 @@
+build:
+  maxIssues: 0
+
+style:
+  MagicNumber:
+    active: false
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 60
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+
+formatting:
+  active: true
