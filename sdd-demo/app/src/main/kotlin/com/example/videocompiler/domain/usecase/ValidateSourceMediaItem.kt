@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.OpenableColumns
 import com.example.videocompiler.domain.model.MediaType
 import com.example.videocompiler.domain.model.SourceMediaItem
 import com.example.videocompiler.domain.model.ValidationState
@@ -28,7 +29,7 @@ open class ValidateSourceMediaItem(private val context: Context) {
      *   picker/MediaStore query that produced it).
      */
     open operator fun invoke(uri: Uri, mediaType: MediaType): MediaValidationResult {
-        val displayName = uri.lastPathSegment
+        val displayName = resolveDisplayName(uri)
         return try {
             when (mediaType) {
                 MediaType.VIDEO -> probeVideo(uri, displayName)
@@ -138,4 +139,14 @@ open class ValidateSourceMediaItem(private val context: Context) {
                 width == null || width <= 0 ||
                 height == null || height <= 0
     }
+
+    private fun resolveDisplayName(uri: Uri): String? =
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                if (!cursor.moveToFirst()) {
+                    null
+                } else {
+                    cursor.getString(0)
+                }
+            } ?: uri.lastPathSegment
 }

@@ -61,4 +61,12 @@ data class OutputSettings(
             }
         }
     }
+
+    companion object {
+        fun default(): OutputSettings = OutputSettings(
+            resolutionTier = ResolutionTier.R1080P,
+            aspectRatio = AspectRatio.RATIO_16_9,
+            frameRate = FrameRatePreset.FPS_30,
+        )
+    }
 }
