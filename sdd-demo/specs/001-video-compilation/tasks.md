@@ -48,39 +48,39 @@ enable independent implementation and testing of each story.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 [P] Create `SourceMediaItem` domain model in
+- [X] T005 [P] Create `SourceMediaItem` domain model in
       `app/src/main/kotlin/com/example/videocompiler/domain/model/SourceMediaItem.kt` per
       data-model.md: fields `uri` (content URI), `mediaType` (enum `VIDEO`, `PHOTO`),
       `displayName`, `durationMs` (video-only), `width`/`height`, `frameRate` (video-only),
       `hasAudioTrack` (video-only, always `false` for photos), `validationState` (enum `VALID`,
       `INVALID_UNREADABLE`); include the constant `PHOTO_DISPLAY_DURATION_MS = 3000`.
-- [ ] T006 [P] Create `OutputSettings` domain model in
+- [X] T006 [P] Create `OutputSettings` domain model in
       `app/src/main/kotlin/com/example/videocompiler/domain/model/OutputSettings.kt` per
       data-model.md: `resolutionTier` (enum `R720P`, `R1080P`, `R2K`, `R4K`), `aspectRatio` (enum
       `RATIO_16_9`, `RATIO_9_16`, `RATIO_1_1`), `frameRate` (enum `FPS_24`, `FPS_30`, `FPS_60`);
       all three fields required, no free-form/custom numeric entry.
-- [ ] T007 [P] Create `CompileJob` domain model in
+- [X] T007 [P] Create `CompileJob` domain model in
       `app/src/main/kotlin/com/example/videocompiler/domain/model/CompileJob.kt` per
       data-model.md: `sequence` (SelectionSequence snapshot), `outputSettings` (OutputSettings
       snapshot), `status` (enum `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELLED` — never transitions
       away from a terminal state), `progressPercent` (int 0-100), `failureReason` (nullable
       string), `outputUri` (nullable content URI).
-- [ ] T008 [P] Create `CompiledOutputVideo` domain model in
+- [X] T008 [P] Create `CompiledOutputVideo` domain model in
       `app/src/main/kotlin/com/example/videocompiler/domain/model/CompiledOutputVideo.kt` per
       data-model.md: `uri`, `resolution`/`aspectRatio`/`frameRate` (must exactly match the
       `OutputSettings` used to produce it), `itemOrder` (ordered list of `SourceMediaItem`
       references matching the originating `SelectionSequence.items` order exactly).
-- [ ] T009 Create `SelectionSequence` domain model in
+- [X] T009 Create `SelectionSequence` domain model in
       `app/src/main/kotlin/com/example/videocompiler/domain/model/SelectionSequence.kt` per
       data-model.md: ordered `items: List<SourceMediaItem>`; operations `append(sourceMediaItem)`
       (adds a validated item to the end), `move(fromIndex, toIndex)`, `remove(index)` — all MUST
       leave no gaps/duplicates; MAY contain as few as 1 entry; MUST NOT accept an item whose
       `validationState != VALID`; no product-imposed maximum length (depends on T005).
-- [ ] T010 Implement `MediaStoreRepository` in
+- [X] T010 Implement `MediaStoreRepository` in
       `app/src/main/kotlin/com/example/videocompiler/data/mediastore/MediaStoreRepository.kt`:
       query available videos/photos via `MediaStore` `ContentResolver`, and save the compiled
       output under the `Movies/VideoCompiler/` collection (research.md §8) (depends on T005).
-- [ ] T011 Implement `ValidateSourceMediaItem` use case in
+- [X] T011 Implement `ValidateSourceMediaItem` use case in
       `app/src/main/kotlin/com/example/videocompiler/domain/usecase/ValidateSourceMediaItem.kt`
       per `contracts/media-validation.md`: input a selected `content://` URI (video or photo);
       output `Valid(SourceMediaItem)` or `Invalid(reason: UNREADABLE | UNSUPPORTED_FORMAT |
@@ -88,17 +88,17 @@ enable independent implementation and testing of each story.
       via `BitmapFactory.decodeStream` (bounds-only) or `ImageDecoder`; MUST be re-callable
       without caching a stale result; MUST have no side effects on device storage (depends on
       T005).
-- [ ] T012 Implement `RevalidateSourceMediaItem` use case in
+- [X] T012 Implement `RevalidateSourceMediaItem` use case in
       `app/src/main/kotlin/com/example/videocompiler/domain/usecase/RevalidateSourceMediaItem.kt`
       per `contracts/media-validation.md`: same `Valid`/`Invalid` output shape as
       `ValidateSourceMediaItem`, invoked by the compile pipeline immediately before/at the moment
       each item is consumed (depends on T011).
-- [ ] T013 [P] Implement runtime media permission handling (research.md §9): request
+- [X] T013 [P] Implement runtime media permission handling (research.md §9): request
       `READ_MEDIA_VIDEO`/`READ_MEDIA_IMAGES` (Android 13+) or `READ_EXTERNAL_STORAGE` (older),
       or evaluate using the system Photo Picker (`PickVisualMedia`) to avoid broad permissions,
       in a shared helper under `app/src/main/kotlin/com/example/videocompiler/ui/selection/`;
       show a clear in-app message with retry/settings shortcut if denied.
-- [ ] T014 [P] Configure a shared error-handling/result type and logging wrapper (used by
+- [X] T014 [P] Configure a shared error-handling/result type and logging wrapper (used by
       `domain`, `data`, `media`, and `service` layers) in
       `app/src/main/kotlin/com/example/videocompiler/domain/model/AppResult.kt` (or equivalent).
 

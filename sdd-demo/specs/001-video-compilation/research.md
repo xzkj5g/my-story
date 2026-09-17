@@ -57,11 +57,12 @@ This document records the decision, rationale, and rejected alternatives for eac
 ## 5. Foreground service for background-survivable compilation
 
 - **Decision**: Run the compile job inside a Started Foreground Service
-  (`CompileForegroundService`) using the `dataSync` or `mediaProcessing` foreground service type
-  (whichever is the current Android-recommended type for on-device media transcoding at
-  implementation time), showing an ongoing `Notification` with progress. The service is stopped
-  and the job aborted cleanly (no partial output committed to `MediaStore`) if the process is
-  killed (e.g., user force-closes the app from Recents).
+  (`CompileForegroundService`) using the `dataSync` foreground service type — resolved during
+  implementation (T028) since `mediaProcessing` is only a valid `foregroundServiceType` value
+  starting at API 35, while this project's `compileSdk`/`targetSdk` is 34 — showing an ongoing
+  `Notification` with progress. The service is stopped and the job aborted cleanly (no partial
+  output committed to `MediaStore`) if the process is killed (e.g., user force-closes the app
+  from Recents).
 - **Rationale**: Directly satisfies FR-013/SC-006 and matches documented Android guidance and
   industry-standard behavior for long-running media export (confirmed during `/speckit-clarify`).
 - **Alternatives considered**: `WorkManager` for the compile job — rejected as the primary

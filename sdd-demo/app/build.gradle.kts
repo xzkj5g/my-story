@@ -67,6 +67,9 @@ detekt {
 }
 
 dependencies {
+    // Enables detekt's `formatting` rule set (config/detekt/detekt.yml)
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.6")
+
     // AndroidX Media3: video/photo composition, encoding, and validation (research.md §1-6b)
     implementation("androidx.media3:media3-transformer:1.4.1")
     implementation("androidx.media3:media3-effect:1.4.1")
