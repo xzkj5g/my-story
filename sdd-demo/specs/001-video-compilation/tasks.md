@@ -122,80 +122,80 @@ duration.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T015 [P] [US1] Unit test: `CompileEngine.compile` produces output items strictly in
+- [X] T015 [P] [US1] Unit test: `CompileEngine.compile` produces output items strictly in
       `sequence.items` order — videos played in full, photos displayed for
       `PHOTO_DISPLAY_DURATION_MS` — back-to-back with no gap, per `contracts/compile-engine.md`
       guarantee 1 (FR-006, SC-002), in
       `app/src/test/kotlin/com/example/videocompiler/media/compiler/CompileEngineOrderTest.kt`.
-- [ ] T016 [P] [US1] Unit test: `CompileEngine` inserts generated silence for any clip segment
+- [X] T016 [P] [US1] Unit test: `CompileEngine` inserts generated silence for any clip segment
       or photo segment with no audio track so the composed output has one continuous audio
       track (FR-009), in
       `app/src/test/kotlin/com/example/videocompiler/media/compiler/CompileEngineSilenceTest.kt`.
-- [ ] T017 [P] [US1] Unit test: `CompileEngine.compile` with a single-item `SelectionSequence`
+- [X] T017 [P] [US1] Unit test: `CompileEngine.compile` with a single-item `SelectionSequence`
       (FR-012) produces an output equal to that single item, re-encoded/rendered to the chosen
       `OutputSettings`, in
       `app/src/test/kotlin/com/example/videocompiler/media/compiler/CompileEngineSingleItemTest.kt`.
-- [ ] T018 [P] [US1] Instrumented test: quickstart.md Scenario 1 — compile 2 sample videos in
+- [X] T018 [P] [US1] Instrumented test: quickstart.md Scenario 1 — compile 2 sample videos in
       selection order and verify a new file appears in `Movies/VideoCompiler/…` playing both
       clips back-to-back with no gap/overlap, in
       `app/src/androidTest/kotlin/com/example/videocompiler/CompileSequenceInstrumentedTest.kt`.
-- [ ] T019 [P] [US1] Instrumented test: quickstart.md Scenario 1b — mixed photo+video sequence;
+- [X] T019 [P] [US1] Instrumented test: quickstart.md Scenario 1b — mixed photo+video sequence;
       verify the photo shows as a static frame for exactly 3 seconds (no pan/zoom) with silent
       audio during its segment, then the video plays in full (FR-009, FR-017, SC-008), in
       `app/src/androidTest/kotlin/com/example/videocompiler/CompilePhotoVideoMixInstrumentedTest.kt`.
-- [ ] T020 [P] [US1] Instrumented test: quickstart.md Scenario 6 — compilation continues to
+- [X] T020 [P] [US1] Instrumented test: quickstart.md Scenario 6 — compilation continues to
       completion when the app is backgrounded/screen locked (progress notification visible,
       output correct), and stops cleanly with no partial/corrupted output when the app is
       swiped away from Recents (FR-010, FR-013, SC-006), in
       `app/src/androidTest/kotlin/com/example/videocompiler/CompileBackgroundServiceInstrumentedTest.kt`.
-- [ ] T021 [P] [US1] Instrumented test: quickstart.md Scenario 7 — attempting to select a
+- [X] T021 [P] [US1] Instrumented test: quickstart.md Scenario 7 — attempting to select a
       corrupted/truncated video file and a corrupted image file is rejected immediately with a
       clear error message and neither is added to the Selection Sequence (FR-015, SC-007), in
       `app/src/androidTest/kotlin/com/example/videocompiler/SelectionValidationInstrumentedTest.kt`.
-- [ ] T022 [P] [US1] Instrumented test: quickstart.md Scenario 8 — a selected item deleted from
+- [X] T022 [P] [US1] Instrumented test: quickstart.md Scenario 8 — a selected item deleted from
       the device before compile starts causes the app to notify the user and not silently
       compile using it (FR-016), in
       `app/src/androidTest/kotlin/com/example/videocompiler/RevalidationInstrumentedTest.kt`.
 
 ### Implementation for User Story 1
 
-- [ ] T023 [US1] Implement `CompileEngine` in
+- [X] T023 [US1] Implement `CompileEngine` in
       `app/src/main/kotlin/com/example/videocompiler/media/compiler/CompileEngine.kt` per
       `contracts/compile-engine.md`, using AndroidX Media3 `Transformer`/`Composition`/
       `EditedMediaItemSequence` APIs to concatenate `sequence.items` in order; render each photo
       as a static-frame `EditedMediaItem` with `durationUs` = `PHOTO_DISPLAY_DURATION_MS` and no
       animation (research.md §6b) (depends on T009, T012).
-- [ ] T024 [US1] Implement silent-audio generation in `media/compiler` for any clip or photo
+- [X] T024 [US1] Implement silent-audio generation in `media/compiler` for any clip or photo
       segment lacking an audio track, so the composed output has one continuous audio track
       (FR-009, research.md §4) (depends on T023).
-- [ ] T025 [US1] Implement `CompileEngine.compile` success path: write the result to `MediaStore`
+- [X] T025 [US1] Implement `CompileEngine.compile` success path: write the result to `MediaStore`
       under `Movies/VideoCompiler/…`, set `CompileJob.status = SUCCEEDED` and `outputUri`
       accordingly (FR-011) (depends on T023, T010).
-- [ ] T026 [US1] Implement `CompileEngine.compile` failure handling: on I/O error, storage
+- [X] T026 [US1] Implement `CompileEngine.compile` failure handling: on I/O error, storage
       exhaustion, or a `RevalidateSourceMediaItem` `Invalid` result mid-job, stop processing
       further items, delete any partial output file, and set `CompileJob.status = FAILED` with a
       `failureReason` identifying the item (FR-010, FR-016) (depends on T025, T012).
-- [ ] T027 [US1] Implement `CompileEngine.cancel(job)`: stop processing as soon as feasible,
+- [X] T027 [US1] Implement `CompileEngine.cancel(job)`: stop processing as soon as feasible,
       delete any partial output file, set `CompileJob.status = CANCELLED` (depends on T023).
-- [ ] T028 [US1] Implement `CompileForegroundService` in
+- [X] T028 [US1] Implement `CompileForegroundService` in
       `app/src/main/kotlin/com/example/videocompiler/service/CompileForegroundService.kt` per
       `contracts/compile-service.md`: promote to foreground with a progress notification before
       encode work begins; continue running through backgrounding/screen-off; call
       `CompileEngine.cancel` (treating the job as `CANCELLED`) if the hosting process is killed
       (depends on T023, T027).
-- [ ] T029 [US1] Implement the `ui/selection` media picker screen in
+- [X] T029 [US1] Implement the `ui/selection` media picker screen in
       `app/src/main/kotlin/com/example/videocompiler/ui/selection/` for videos and photos,
       calling `ValidateSourceMediaItem` before `SelectionSequence.append`, and showing a clear
       rejection message naming the file for `Invalid` results (FR-001, FR-015) (depends on T009,
       T011, T013).
-- [ ] T030 [US1] Implement the `ui/compile` trigger + progress screen in
+- [X] T030 [US1] Implement the `ui/compile` trigger + progress screen in
       `app/src/main/kotlin/com/example/videocompiler/ui/compile/`, bound to
       `CompileJob.progressPercent` and `CompileForegroundService` notification state (FR-013)
       (depends on T028).
-- [ ] T031 [US1] Add a low-resource warning surfaced during selection and compilation when
+- [X] T031 [US1] Add a low-resource warning surfaced during selection and compilation when
       device storage/memory runs low, without enforcing any hard item-count/duration cap
       (FR-014) in `ui/selection` and `ui/compile`.
-- [ ] T032 [US1] Wire a sensible default `OutputSettings` (e.g., 1080p / 16:9 / 30fps) into the
+- [X] T032 [US1] Wire a sensible default `OutputSettings` (e.g., 1080p / 16:9 / 30fps) into the
       compile flow so User Story 1 is fully compilable before User Story 3's preset picker UI
       exists (depends on T006).
 
