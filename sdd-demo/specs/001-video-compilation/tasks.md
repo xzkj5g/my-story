@@ -214,10 +214,10 @@ order, compile, and verify the output plays clips in the newly defined order.
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T033 [P] [US2] Unit test: `SelectionSequence.move(fromIndex, toIndex)` reorders an entry
+- [X] T033 [P] [US2] Unit test: `SelectionSequence.move(fromIndex, toIndex)` reorders an entry
       correctly with no gaps/duplicates (Acceptance Scenario 1), in
       `app/src/test/kotlin/com/example/videocompiler/domain/model/SelectionSequenceMoveTest.kt`.
-- [ ] T034 [P] [US2] Unit test: `SelectionSequence.remove(index)` shifts remaining entries to
+- [X] T034 [P] [US2] Unit test: `SelectionSequence.remove(index)` shifts remaining entries to
       keep their relative order with no gap or duplicate (Acceptance Scenario 3), in
       `app/src/test/kotlin/com/example/videocompiler/domain/model/SelectionSequenceRemoveTest.kt`.
 - [ ] T035 [P] [US2] Instrumented test: quickstart.md Scenario 3 — select 3 videos (A, B, C),
@@ -256,11 +256,11 @@ matches the preset exactly with every item fully visible.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T040 [P] [US3] Unit test: `OutputSettings` only accepts the defined preset enum values for
+- [X] T040 [P] [US3] Unit test: `OutputSettings` only accepts the defined preset enum values for
       `resolutionTier`, `aspectRatio`, and `frameRate` — no free-form numeric entry (Acceptance
       Scenario 1), in
       `app/src/test/kotlin/com/example/videocompiler/domain/model/OutputSettingsValidationTest.kt`.
-- [ ] T041 [P] [US3] Unit test: combining `resolutionTier` + `aspectRatio` derives the correct
+- [X] T041 [P] [US3] Unit test: combining `resolutionTier` + `aspectRatio` derives the correct
       `outputWidth × outputHeight` per the research.md §7 preset table (e.g., 1080p + 9:16 →
       1080×1920), in
       `app/src/test/kotlin/com/example/videocompiler/domain/model/OutputSettingsDimensionsTest.kt`.
