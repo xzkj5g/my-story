@@ -36,6 +36,11 @@ class CompileSequenceInstrumentedTest {
             assertEquals(CompileJobStatus.SUCCEEDED, job.status)
             val outputUri = Uri.parse(requireNotNull(job.outputUri))
             createdUris += outputUri
+            // T052: CompileJob must expose a CompiledOutputVideo matching the settings/order used.
+            val compiledOutput = requireNotNull(job.compiledOutput)
+            assertEquals(outputUri.toString(), compiledOutput.uri)
+            assertEquals(MediaTestUtils.defaultOutputSettings, compiledOutput.toOutputSettings())
+            assertEquals(sequence.items, compiledOutput.itemOrder)
             MediaTestUtils.assertSavedUnderVideoCompiler(context, outputUri)
             MediaTestUtils.assertApproxDuration(context, outputUri, 2_000L)
             MediaTestUtils.assertCenterColor(context, outputUri, 500L, MediaTestUtils.colorRed())

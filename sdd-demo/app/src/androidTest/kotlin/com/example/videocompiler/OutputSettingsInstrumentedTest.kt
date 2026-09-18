@@ -68,6 +68,97 @@ class OutputSettingsInstrumentedTest {
         }
     }
 
+    /**
+     * T053 (SC-003 coverage): a second preset combination — 9:16 portrait output at 720p/24fps —
+     * to substantiate SC-003 beyond the single 1080p/16:9/30fps case above. Uses a landscape
+     * source clip so the letterboxing (top/bottom padding) direction is the opposite of the
+     * pillarboxing case above.
+     */
+    @Test
+    fun landscapeClipIsLetterboxedToFitThe720p9by16At24fpsPreset() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        MediaTestUtils.grantRuntimePermissions()
+        val createdUris = mutableListOf<Uri>()
+        try {
+            val landscape = MediaTestUtils.importAsset(context, "video_yellow_noaudio.mp4", MediaType.VIDEO)
+            createdUris += landscape
+            val sequence = MediaTestUtils.sequenceOf(landscape to MediaType.VIDEO, context = context)
+            val settings = OutputSettings(
+                resolutionTier = ResolutionTier.R720P,
+                aspectRatio = AspectRatio.RATIO_9_16,
+                frameRate = FrameRatePreset.FPS_24,
+            )
+
+            val job = CompileEngine(context).compile(sequence, settings)
+
+            assertEquals(CompileJobStatus.SUCCEEDED, job.status)
+            val outputUri = Uri.parse(requireNotNull(job.outputUri))
+            createdUris += outputUri
+
+            // The encoder may keep the physical buffer in its efficient (landscape) orientation
+            // and instead attach a container-level `rotation-degrees` flag; a 90/270 flag means
+            // width/height are swapped relative to the displayed (and requested) dimensions.
+            val (rawWidth, rawHeight, frameRate) = readVideoFormat(context, outputUri)
+            val rotation = readRotationDegrees(context, outputUri)
+            val (width, height) = if (rotation == 90 || rotation == 270) {
+                rawHeight to rawWidth
+            } else {
+                rawWidth to rawHeight
+            }
+            assertEquals(settings.outputWidth, width)
+            assertEquals(settings.outputHeight, height)
+            assertTrue("expected ~24fps but was $frameRate", frameRate in 20f..28f)
+            MediaTestUtils.assertCenterColor(context, outputUri, 500L, MediaTestUtils.colorYellow())
+        } finally {
+            createdUris.forEach { MediaTestUtils.deleteUri(context, it) }
+        }
+    }
+
+    /**
+     * T053 (SC-003 coverage): a third preset combination — square 1:1 output at 2K/60fps —
+     * an otherwise untested resolution tier plus the highest frame rate preset. R2K (not R4K)
+     * is used deliberately: the emulator's software AVC encoder is capped at Level 4
+     * (~8192 macroblocks, i.e. up to roughly 1920x1088), so a true 2160x2160 (R4K square)
+     * request gets silently clamped by the codec on this hardware, which would make the
+     * assertion below flaky in CI/emulator environments rather than validating real app logic.
+     *
+     * <p>Uses a source clip that is natively 60fps: Media3's frame rate setting only ever acts
+     * as a *maximum* cap for video (it drops frames to reach the cap but never invents new ones
+     * to upsample), so requesting FPS_60 against a lower-native-fps source would legitimately
+     * leave the output at the source's rate rather than exercising the 60fps preset.
+     */
+    @Test
+    fun portraitClipFitsThe2k1by1At60fpsPreset() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        MediaTestUtils.grantRuntimePermissions()
+        val createdUris = mutableListOf<Uri>()
+        try {
+            val portrait = MediaTestUtils.importAsset(context, "video_blue_portrait_60fps.mp4", MediaType.VIDEO)
+            createdUris += portrait
+            val sequence = MediaTestUtils.sequenceOf(portrait to MediaType.VIDEO, context = context)
+            val settings = OutputSettings(
+                resolutionTier = ResolutionTier.R2K,
+                aspectRatio = AspectRatio.RATIO_1_1,
+                frameRate = FrameRatePreset.FPS_60,
+            )
+
+            val job = CompileEngine(context).compile(sequence, settings)
+
+            assertEquals(CompileJobStatus.SUCCEEDED, job.status)
+            val outputUri = Uri.parse(requireNotNull(job.outputUri))
+            createdUris += outputUri
+
+            val (width, height, frameRate) = readVideoFormat(context, outputUri)
+            assertEquals(settings.outputWidth, width)
+            assertEquals(settings.outputHeight, height)
+            assertEquals(settings.outputWidth, settings.outputHeight)
+            assertTrue("expected ~60fps but was $frameRate", frameRate in 50f..70f)
+            MediaTestUtils.assertCenterColor(context, outputUri, 500L, MediaTestUtils.colorBlue())
+        } finally {
+            createdUris.forEach { MediaTestUtils.deleteUri(context, it) }
+        }
+    }
+
     private fun readVideoFormat(context: Context, uri: Uri): Triple<Int, Int, Float> {
         val extractor = MediaExtractor()
         return try {
@@ -84,6 +175,20 @@ class OutputSettingsInstrumentedTest {
                     30f
                 },
             )
+        } finally {
+            extractor.release()
+        }
+    }
+
+    /** Returns the container-level rotation flag (0 if absent), e.g. 90 for a rotated buffer. */
+    private fun readRotationDegrees(context: Context, uri: Uri): Int {
+        val extractor = MediaExtractor()
+        return try {
+            extractor.setDataSource(context, uri, null)
+            val format = (0 until extractor.trackCount)
+                .map { extractor.getTrackFormat(it) }
+                .first { it.getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true }
+            if (format.containsKey("rotation-degrees")) format.getInteger("rotation-degrees") else 0
         } finally {
             extractor.release()
         }

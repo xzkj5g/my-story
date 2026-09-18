@@ -207,6 +207,8 @@ object MediaTestUtils {
 
     fun colorGreen(): Int = Color.GREEN
 
+    fun colorYellow(): Int = Color.YELLOW
+
     private fun readFrame(context: Context, uri: Uri, timeMs: Long) =
         MediaMetadataRetriever().let { retriever ->
             try {

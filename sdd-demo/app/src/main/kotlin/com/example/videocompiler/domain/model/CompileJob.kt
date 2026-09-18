@@ -27,6 +27,9 @@ enum class CompileJobStatus {
  *   item became unavailable" per FR-016, "insufficient storage").
  * @property outputUri Set when [status] is [CompileJobStatus.SUCCEEDED]; the saved `MediaStore`
  *   location of the Compiled Output Video (FR-011).
+ * @property compiledOutput Set when [status] is [CompileJobStatus.SUCCEEDED]; the
+ *   [CompiledOutputVideo] produced by this job, per data-model.md's `CompileJob 1──0..1
+ *   CompiledOutputVideo` relationship (FR-007, SC-002, SC-003).
  */
 data class CompileJob(
     val sequence: SelectionSequence,
@@ -35,6 +38,7 @@ data class CompileJob(
     val progressPercent: Int,
     val failureReason: String? = null,
     val outputUri: String? = null,
+    val compiledOutput: CompiledOutputVideo? = null,
 ) {
     init {
         require(progressPercent in 0..100) { "progressPercent must be in 0..100" }
@@ -43,6 +47,9 @@ data class CompileJob(
         }
         require(status != CompileJobStatus.SUCCEEDED || outputUri != null) {
             "a SUCCEEDED job must have an outputUri"
+        }
+        require(status != CompileJobStatus.SUCCEEDED || compiledOutput != null) {
+            "a SUCCEEDED job must have a compiledOutput"
         }
     }
 
@@ -55,6 +62,7 @@ data class CompileJob(
         progressPercent: Int = this.progressPercent,
         failureReason: String? = null,
         outputUri: String? = null,
+        compiledOutput: CompiledOutputVideo? = null,
     ): CompileJob {
         check(status == CompileJobStatus.RUNNING) {
             "cannot transition a CompileJob out of a terminal state ($status)"
@@ -64,6 +72,7 @@ data class CompileJob(
             progressPercent = progressPercent,
             failureReason = failureReason,
             outputUri = outputUri,
+            compiledOutput = compiledOutput,
         )
     }
 }

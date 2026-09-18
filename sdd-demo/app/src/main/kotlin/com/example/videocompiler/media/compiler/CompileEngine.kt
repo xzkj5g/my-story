@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.HandlerThread
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.Presentation
@@ -19,6 +20,7 @@ import com.example.videocompiler.data.mediastore.MediaStoreRepository
 import com.example.videocompiler.domain.model.AppResult
 import com.example.videocompiler.domain.model.CompileJob
 import com.example.videocompiler.domain.model.CompileJobStatus
+import com.example.videocompiler.domain.model.CompiledOutputVideo
 import com.example.videocompiler.domain.model.MediaType
 import com.example.videocompiler.domain.model.OutputSettings
 import com.example.videocompiler.domain.model.SelectionSequence
@@ -245,10 +247,24 @@ class CompileEngine(
             newStatus = CompileJobStatus.SUCCEEDED,
             progressPercent = 100,
             outputUri = outputUri.toString(),
+            compiledOutput = buildCompiledOutputVideo(job, outputUri),
         )
         onProgress(succeeded)
         return succeeded
     }
+
+    /**
+     * Builds the [CompiledOutputVideo] for a just-succeeded [job], per data-model.md's
+     * `CompileJob 1──0..1 CompiledOutputVideo` relationship (FR-007, SC-002, SC-003).
+     */
+    private fun buildCompiledOutputVideo(job: CompileJob, outputUri: Uri): CompiledOutputVideo =
+        CompiledOutputVideo(
+            uri = outputUri.toString(),
+            resolutionTier = job.outputSettings.resolutionTier,
+            aspectRatio = job.outputSettings.aspectRatio,
+            frameRate = job.outputSettings.frameRate,
+            itemOrder = job.sequence.items,
+        )
 
     private companion object {
         const val PROGRESS_POLL_INTERVAL_MS = 250L
@@ -270,27 +286,29 @@ private fun buildComposition(plan: CompositionPlan, settings: OutputSettings): C
         settings.outputHeight,
         Presentation.LAYOUT_SCALE_TO_FIT,
     )
-    val sequence = EditedMediaItemSequence(
-        plan.segments.map { segment ->
-            val mediaItemBuilder = MediaItem.Builder().setUri(segment.source.uri)
-            if (segment.source.mediaType == MediaType.PHOTO) {
-                mediaItemBuilder.setImageDurationMs(segment.durationMs)
-            }
-            val editedItemBuilder = EditedMediaItem.Builder(mediaItemBuilder.build())
-            if (segment.source.mediaType == MediaType.PHOTO) {
-                editedItemBuilder.setDurationUs(segment.durationMs * 1_000L)
-            }
-            // Resample every segment (video or photo) to the target frame rate (FR-008
-            // Acceptance Scenario 4) without altering its playback speed/duration — Media3
-            // duplicates/drops frames internally to hit this rate.
-            editedItemBuilder
-                .setFrameRate(settings.frameRate.fps)
-                .setEffects(Effects(emptyList(), listOf(presentationEffect)))
-            editedItemBuilder.build()
-        },
-    )
+    val editedItems = plan.segments.map { segment ->
+        val mediaItemBuilder = MediaItem.Builder().setUri(segment.source.uri)
+        if (segment.source.mediaType == MediaType.PHOTO) {
+            mediaItemBuilder.setImageDurationMs(segment.durationMs)
+        }
+        val editedItemBuilder = EditedMediaItem.Builder(mediaItemBuilder.build())
+        if (segment.source.mediaType == MediaType.PHOTO) {
+            editedItemBuilder.setDurationUs(segment.durationMs * 1_000L)
+        }
+        // Resample every segment (video or photo) to the target frame rate (FR-008
+        // Acceptance Scenario 4) without altering its playback speed/duration — Media3
+        // duplicates/drops frames internally to hit this rate.
+        editedItemBuilder
+            .setFrameRate(settings.frameRate.fps)
+            .setEffects(Effects(emptyList(), listOf(presentationEffect)))
+        editedItemBuilder.build()
+    }
+    // Force an audio track (matching the previous experimentalSetForceAudioTrack(true)
+    // behavior) so silent/photo-only segments still produce a valid audio track.
+    val sequence = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_AUDIO, C.TRACK_TYPE_VIDEO))
+        .addItems(editedItems)
+        .build()
     return Composition.Builder(sequence)
-        .experimentalSetForceAudioTrack(true)
         .build()
 }
 
