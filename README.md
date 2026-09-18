@@ -65,3 +65,25 @@ emulator/device for instrumented tests):
 
 See `specs/001-video-compilation/quickstart.md` for manual end-to-end
 validation scenarios.
+
+## GitHub Actions CI/CD
+
+Pull requests and pushes to `main` run the Android validation workflow. It runs detekt, debug unit
+tests, and a debug APK build, then retains the APK and diagnostics for 14 days.
+
+An authorized developer can manually run the release workflow from `main` with a unique
+`YYYY.MM.DD` tag, such as `2026.09.18`. The workflow validates, signs, and verifies the release
+APK, publishes it to a GitHub Release with a certificate fingerprint and SHA-256 checksum, and
+never publishes to an app store.
+
+Configure these protected GitHub Secrets or `release` Environment values before releasing:
+
+```text
+ANDROID_KEYSTORE_BASE64
+ANDROID_KEYSTORE_PASSWORD
+ANDROID_KEY_ALIAS
+ANDROID_KEY_PASSWORD
+```
+
+See `.github/workflows/README.md`, `scripts/ci/README.md`, and
+`specs/002-github-actions-android-cicd/quickstart.md` for setup, verification, and troubleshooting.

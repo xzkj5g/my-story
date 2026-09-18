@@ -1,15 +1,29 @@
-*.iml
+android-studio
+GAS-Emulator-Launcher-linux_351/
+wireshark-4.4.9/
+woeusb-5.2.4.bash
+jdk-17.0.6+10/
+scrcpy-linux-x86_64-v3.3.3.tar.gz
+
+# Android/Kotlin build output and local IDE state
 .gradle/
-/local.properties
-/.idea/
+**/build/
+out/
+.idea/
+*.iml
+*.class
+*.jar
+*.log
 .DS_Store
-/build/
-/captures/
-.externalNativeBuild/
-.cxx/
-*.apk
-*.aab
+Thumbs.db
 
-# Gradle wrapper jar is intentionally tracked; do not ignore gradle/wrapper/gradle-wrapper.jar
+# Local and CI signing material
+*.jks
+*.keystore
+*.p12
+release-keystore.base64
+.env*
 
-app/build/
+# Python test and tooling cache
+__pycache__/
+*.pyc
