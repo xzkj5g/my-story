@@ -340,6 +340,25 @@ matches the preset exactly with every item fully visible.
 
 ---
 
+## Phase 8: Convergence
+
+- [X] T054 Implement true frame-rate upsampling in `media/compiler`/`CompileEngine.kt` so the
+      compiled output's frame rate always exactly equals `settings.frameRate` regardless of a
+      source clip's native frame rate (partial; Media3 1.10.1's
+      `EditedMediaItem.Builder.setFrameRate()` is confirmed — via library source and an on-device
+      `ffprobe` check — to act only as a *maximum* cap: it drops frames when a source's native fps
+      is higher than the target, but has no effect when the source's native fps is lower, so
+      selecting a preset fps higher than a source clip's native fps currently leaves the output
+      at the source's lower fps instead of matching the chosen preset), then add an instrumented
+      test in `OutputSettingsInstrumentedTest.kt` using a source clip whose native fps is lower
+      than the selected preset (e.g., a 24fps or 30fps source against the `FPS_60` preset) to
+      cover this direction, which is currently untested (T042 and T053's frame-rate cases all use
+      sources whose native fps already equals the requested preset) per FR-007, SC-003,
+      User Story 3 Acceptance Scenario 4, and `contracts/compile-engine.md` guarantees #2 and #4
+      (partial).
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

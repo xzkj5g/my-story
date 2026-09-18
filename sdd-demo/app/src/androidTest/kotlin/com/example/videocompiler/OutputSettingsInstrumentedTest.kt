@@ -159,6 +159,71 @@ class OutputSettingsInstrumentedTest {
         }
     }
 
+    /**
+     * T054 (FR-007/FR-008, SC-003 Acceptance Scenario 4): a source clip natively slower than
+     * the requested preset — `video_red_audio.mp4` is 30fps — compiled against `FPS_60`. Media3
+     * alone only ever *caps* frame rate downward, so this exercises `CompileEngine`'s
+     * frame-duplication upsampling path and asserts the output genuinely reaches ~60fps rather
+     * than silently staying at the source's native 30fps.
+     */
+    @Test
+    fun slowerSourceIsUpsampledToTheRequestedHigherFpsPreset() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        MediaTestUtils.grantRuntimePermissions()
+        val createdUris = mutableListOf<Uri>()
+        try {
+            val source = MediaTestUtils.importAsset(context, "video_red_audio.mp4", MediaType.VIDEO)
+            createdUris += source
+            val sequence = MediaTestUtils.sequenceOf(source to MediaType.VIDEO, context = context)
+            val settings = OutputSettings(
+                resolutionTier = ResolutionTier.R1080P,
+                aspectRatio = AspectRatio.RATIO_16_9,
+                frameRate = FrameRatePreset.FPS_60,
+            )
+
+            val job = CompileEngine(context).compile(sequence, settings)
+
+            assertEquals(CompileJobStatus.SUCCEEDED, job.status)
+            val outputUri = Uri.parse(requireNotNull(job.outputUri))
+            createdUris += outputUri
+
+            val (_, _, frameRate) = readVideoFormat(context, outputUri)
+            assertTrue("expected ~60fps but was $frameRate", frameRate in 50f..70f)
+            assertEquals(actualFrameCount(context, outputUri).toLong(), 60L, 6L)
+        } finally {
+            createdUris.forEach { MediaTestUtils.deleteUri(context, it) }
+        }
+    }
+
+    /** Asserts [actual] is within [tolerance] of [expected]. */
+    private fun assertEquals(expected: Long, actual: Long, tolerance: Long) {
+        assertTrue(
+            "expected $actual to be within $tolerance of $expected",
+            kotlin.math.abs(actual - expected) <= tolerance,
+        )
+    }
+
+    /** Counts actual decoded video frames in [uri] by advancing a [MediaExtractor] to the end. */
+    private fun actualFrameCount(context: Context, uri: Uri): Int {
+        val extractor = MediaExtractor()
+        return try {
+            extractor.setDataSource(context, uri, null)
+            val videoTrackIndex = (0 until extractor.trackCount).first {
+                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true
+            }
+            extractor.selectTrack(videoTrackIndex)
+            var count = 0
+            val buffer = java.nio.ByteBuffer.allocate(1 shl 20)
+            while (extractor.readSampleData(buffer, 0) >= 0) {
+                count++
+                extractor.advance()
+            }
+            count
+        } finally {
+            extractor.release()
+        }
+    }
+
     private fun readVideoFormat(context: Context, uri: Uri): Triple<Int, Int, Float> {
         val extractor = MediaExtractor()
         return try {

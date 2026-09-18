@@ -169,6 +169,7 @@ class CompileEngine(
     ): CompileJob {
         var runningJob = job
         val tempFile = File(context.cacheDir, "compile-${UUID.randomUUID()}.mp4")
+        val upsampledSourceFiles = mutableListOf<File>()
         val export = ActiveExport(
             context = context,
             outputUri = outputUri,
@@ -181,7 +182,7 @@ class CompileEngine(
         }
 
         return try {
-            export.start(buildComposition(plan, settings))
+            export.start(buildComposition(context, plan, settings, upsampledSourceFiles))
             while (!export.completionLatch.await(PROGRESS_POLL_INTERVAL_MS, TimeUnit.MILLISECONDS)) {
                 runningJob = updateProgress(runningJob, export.readProgressPercent(), onProgress)
                 if (export.cancelRequested.get()) {
@@ -199,6 +200,7 @@ class CompileEngine(
             }
             export.release()
             tempFile.delete()
+            upsampledSourceFiles.forEach { it.delete() }
         }
     }
 
@@ -276,7 +278,12 @@ private fun defaultOutputDisplayName(): String {
     return "media-sequence-$timestamp.mp4"
 }
 
-private fun buildComposition(plan: CompositionPlan, settings: OutputSettings): Composition {
+private fun buildComposition(
+    context: Context,
+    plan: CompositionPlan,
+    settings: OutputSettings,
+    upsampledSourceFiles: MutableList<File>,
+): Composition {
     // Applied per-item rather than at the Composition level: Composition-level video effects
     // are only guaranteed to run when multiple sequences are combined (e.g. overlays); for a
     // single video sequence, the Presentation resize/pad effect must be attached to each
@@ -287,7 +294,8 @@ private fun buildComposition(plan: CompositionPlan, settings: OutputSettings): C
         Presentation.LAYOUT_SCALE_TO_FIT,
     )
     val editedItems = plan.segments.map { segment ->
-        val mediaItemBuilder = MediaItem.Builder().setUri(segment.source.uri)
+        val resolvedUri = resolveSegmentUri(context, segment, settings, upsampledSourceFiles)
+        val mediaItemBuilder = MediaItem.Builder().setUri(resolvedUri)
         if (segment.source.mediaType == MediaType.PHOTO) {
             mediaItemBuilder.setImageDurationMs(segment.durationMs)
         }
@@ -296,8 +304,12 @@ private fun buildComposition(plan: CompositionPlan, settings: OutputSettings): C
             editedItemBuilder.setDurationUs(segment.durationMs * 1_000L)
         }
         // Resample every segment (video or photo) to the target frame rate (FR-008
-        // Acceptance Scenario 4) without altering its playback speed/duration — Media3
-        // duplicates/drops frames internally to hit this rate.
+        // Acceptance Scenario 4) without altering its playback speed/duration. Media3's
+        // setFrameRate() is only a *maximum cap* — it drops frames when the source is faster
+        // than this, but has no effect when the source is slower. Genuinely-too-slow video
+        // sources are pre-upsampled by FrameRateUpsampler (decoded and re-encoded at the
+        // target rate) via resolveSegmentUri() above, so by this point setFrameRate() only
+        // ever needs to (optionally) cap sources that are already at or above the target rate.
         editedItemBuilder
             .setFrameRate(settings.frameRate.fps)
             .setEffects(Effects(emptyList(), listOf(presentationEffect)))
@@ -311,6 +323,43 @@ private fun buildComposition(plan: CompositionPlan, settings: OutputSettings): C
     return Composition.Builder(sequence)
         .build()
 }
+
+/**
+ * Returns the [Uri] to actually feed into the composition for [segment]: the original source
+ * unless it's a video whose native frame rate is below [settings]'s target, in which case a
+ * re-encoded local copy is created via [FrameRateUpsampler] (tracked in
+ * [upsampledSourceFiles] for later cleanup) so the target frame rate is genuinely reached
+ * (FR-007/FR-008, SC-003 Acceptance Scenario 4).
+ */
+private fun resolveSegmentUri(
+    context: Context,
+    segment: MediaSegmentPlan,
+    settings: OutputSettings,
+    upsampledSourceFiles: MutableList<File>,
+): Uri {
+    val source = segment.source
+    val originalUri = Uri.parse(source.uri)
+    val nativeFps = source.frameRate
+    val needsUpsampling = source.mediaType == MediaType.VIDEO &&
+        nativeFps != null &&
+        nativeFps + FRAME_RATE_TOLERANCE_FPS < settings.frameRate.fps
+    if (!needsUpsampling) {
+        return originalUri
+    }
+    val upsampledFile = FrameRateUpsampler.upsample(
+        context = context,
+        sourceUri = originalUri,
+        targetFps = settings.frameRate.fps,
+        cacheDir = context.cacheDir,
+    )
+    if (upsampledFile != null) {
+        upsampledSourceFiles += upsampledFile
+    }
+    return upsampledFile?.let { Uri.fromFile(it) } ?: originalUri
+}
+
+/** Tolerance for treating a slightly-below-target native frame rate (e.g. 29.97) as sufficient. */
+private const val FRAME_RATE_TOLERANCE_FPS = 0.5f
 
 @Throws(IOException::class)
 private fun copyTempFileToOutput(context: Context, tempFile: File, outputUri: Uri) {
