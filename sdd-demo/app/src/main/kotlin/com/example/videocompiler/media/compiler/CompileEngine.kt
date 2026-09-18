@@ -306,18 +306,6 @@ private fun copyTempFileToOutput(context: Context, tempFile: File, outputUri: Ur
     }
 }
 
-private fun updateProgress(
-    job: CompileJob,
-    progressPercent: Int,
-    onProgress: (CompileJob) -> Unit,
-): CompileJob {
-    return if (progressPercent > job.progressPercent) {
-        job.copy(progressPercent = progressPercent).also(onProgress)
-    } else {
-        job
-    }
-}
-
 private class ActiveExport(
     private val context: Context,
     val outputUri: Uri,

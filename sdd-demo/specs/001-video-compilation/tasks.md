@@ -300,16 +300,16 @@ matches the preset exactly with every item fully visible.
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T047 [P] Update project documentation (e.g., `README.md`) describing the final feature set
+- [X] T047 [P] Update project documentation (e.g., `README.md`) describing the final feature set
       (video + photo sequence compilation, reorder, output presets).
-- [ ] T048 Code cleanup and refactoring pass across `domain/`, `data/`, `media/`, and `service/`
+- [X] T048 Code cleanup and refactoring pass across `domain/`, `data/`, `media/`, and `service/`
       layers for consistency and to remove any duplication introduced across US1-US3.
-- [ ] T049 [P] Add unit tests for remaining edge cases: attempting to compile an empty
+- [X] T049 [P] Add unit tests for remaining edge cases: attempting to compile an empty
       `SelectionSequence` is blocked, and a photo-only sequence compiles correctly, in
       `app/src/test/kotlin/com/example/videocompiler/media/compiler/CompileEngineEdgeCasesTest.kt`.
-- [ ] T050 Security/permission hardening review: confirm scoped-storage compliance and that no
+- [X] T050 Security/permission hardening review: confirm scoped-storage compliance and that no
       broader-than-necessary permissions are requested (research.md §9).
-- [ ] T051 Run the full `quickstart.md` validation pass (all 8 scenarios, including 1b) end-to-end
+- [X] T051 Run the full `quickstart.md` validation pass (all 8 scenarios, including 1b) end-to-end
       on a physical device or emulator and record the results.
 
 ---

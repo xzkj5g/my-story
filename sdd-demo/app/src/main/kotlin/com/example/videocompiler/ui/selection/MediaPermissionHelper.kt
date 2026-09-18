@@ -25,12 +25,19 @@ object MediaPermissionHelper {
     /**
      * Runtime permissions to request when [isPhotoPickerAvailable] is false, i.e. the app must
      * fall back to a classic storage-backed picker/query flow.
+     *
+     * On API 26-28 (pre-scoped-storage), [Manifest.permission.WRITE_EXTERNAL_STORAGE] is also
+     * required to insert the compiled output into `MediaStore.Video`, since scoped storage (which
+     * lets an app write its own MediaStore entries without this permission) only applies from
+     * API 29 onward (research.md §9, T050 review).
      */
     fun requiredPermissions(): Array<String> = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
             arrayOf(Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES)
-        else ->
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        else ->
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 
     /** Whether every permission in [requiredPermissions] is already granted. */

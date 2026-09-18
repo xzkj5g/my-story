@@ -143,6 +143,14 @@ This document records the decision, rationale, and rejected alternatives for eac
   during task breakdown as it may allow skipping the broad `READ_MEDIA_VIDEO`/`READ_MEDIA_IMAGES`
   permissions for the selection flow (Android 13+ Photo Picker does not require them). Documented
   here as the preferred direction, to be finalized in tasks.
+- **T050 polish-phase finding**: On API 26-28 (below API 29's scoped storage), inserting the
+  compiled output into `MediaStore.Video` also requires `WRITE_EXTERNAL_STORAGE` — from API 29
+  onward, scoped storage lets an app write its own `MediaStore` entries without this permission.
+  Since this app's `minSdk` is 26, `WRITE_EXTERNAL_STORAGE` (capped with
+  `android:maxSdkVersion="28"`) was added to the manifest and to
+  `MediaPermissionHelper.requiredPermissions()`'s pre-Q branch so it is requested at runtime
+  alongside `READ_EXTERNAL_STORAGE`. No permission beyond this is requested at any API level; the
+  app does not request `MANAGE_EXTERNAL_STORAGE` or any all-files-access permission.
 
 ## Summary
 
