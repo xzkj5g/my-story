@@ -10,7 +10,7 @@ from pathlib import Path
 import yaml
 
 WORKFLOW_DIR = Path(".github/workflows")
-ACTION_PATTERN = re.compile(r"uses:\s*([^@\s]+)@([0-9a-f]{40})")
+ACTION_PATTERN = re.compile(r"uses:\s*([^@\s]+)@([^\s]+)")
 SECRET_TERMS = ("GITHUB_TOKEN", "KEYSTORE_PASSWORD", "KEY_PASSWORD", "KEYSTORE_BASE64")
 
 
@@ -40,9 +40,9 @@ def validate_workflow(path: Path) -> list[str]:
     if "contents: write" in content and "softprops/action-gh-release@" in content:
         if "permissions:\n  contents: write" not in content:
             errors.append(f"{path}: release publication must declare contents: write")
-    for action, commit in ACTION_PATTERN.findall(content):
-        if len(commit) != 40:
-            errors.append(f"{path}: action {action} is not pinned to a full SHA")
+    for action, reference in ACTION_PATTERN.findall(content):
+        if not re.fullmatch(r"v\d+", reference):
+            errors.append(f"{path}: action {action} must use a stable major tag (found {reference})")
     return errors
 
 

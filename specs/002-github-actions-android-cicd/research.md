@@ -18,19 +18,16 @@
 
 ## 3. Action dependencies
 
-- **Decision**: Pin every third-party action to a full commit SHA and retain the major version in
-  a comment. Use `actions/checkout@v6`
-  (`de7274f081f381c8f8158605e0321c36c376e2e6`), `actions/setup-java@v7`
-  (`043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`), `gradle/actions/setup-gradle@v6`
-  (`9c971963bec38e04b3d30dcc455b5382be2fdbfb`), `android-actions/setup-android@v4`
-  (`be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd`), `actions/upload-artifact@v8`
-  (`3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c`), and
-  `softprops/action-gh-release@v3` (`efb35369e0ad2afab669f228072c1b0d510eae64`).
-- **Rationale**: Full SHA pinning provides reproducible action code and reduces supply-chain drift;
-  comments preserve maintainability when Dependabot or a planned review updates a pin.
-- **Alternatives considered**: Mutable major tags and runner-preinstalled SDK assumptions were
-  rejected due to reproducibility and supply-chain risk. GitHub CLI remains a viable publication
-  alternative, but the pinned release action gives a declarative asset contract.
+- **Decision**: Use stable major-version tags for the maintained GitHub Actions:
+  `actions/checkout@v6`, `actions/setup-java@v6`, `gradle/actions/setup-gradle@v6`,
+  `android-actions/setup-android@v4`, `actions/upload-artifact@v7`, and
+  `softprops/action-gh-release@v3`.
+- **Rationale**: Major-version tags keep workflow maintenance straightforward while allowing
+  compatible patch and minor updates within each supported action line. The workflow still pins
+  the Java, Android SDK, and Gradle toolchain versions explicitly.
+- **Alternatives considered**: Full commit-SHA pinning was rejected for this project because it
+  adds update overhead and the requested workflow favors simpler maintenance. GitHub CLI remains
+  a viable publication alternative, but the release action provides a declarative asset contract.
 
 ## 4. Validation scope
 

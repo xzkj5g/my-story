@@ -18,14 +18,10 @@ fingerprint/checksum metadata as a GitHub Release. No app-store publication is i
 
 **Language/Version**: GitHub Actions YAML; Gradle/Kotlin Android project targeting Java 17
 
-**Primary Dependencies**: GitHub-hosted Ubuntu runner; SHA-pinned `actions/checkout@v6`
-(`de7274f081f381c8f8158605e0321c36c376e2e6`), `actions/setup-java@v7`
-(`043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`), `gradle/actions/setup-gradle@v6`
-(`9c971963bec38e04b3d30dcc455b5382be2fdbfb`), `android-actions/setup-android@v4`
-(`be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd`), `actions/upload-artifact@v8`
-(`3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c`), and
-`softprops/action-gh-release@v3` (`efb35369e0ad2afab669f228072c1b0d510eae64`); Gradle Wrapper;
-JDK `apksigner`/`keytool`
+**Primary Dependencies**: GitHub-hosted Ubuntu runner; stable major-version GitHub Actions:
+`actions/checkout@v6`, `actions/setup-java@v6`, `gradle/actions/setup-gradle@v6`,
+`android-actions/setup-android@v4`, `actions/upload-artifact@v7`, and
+`softprops/action-gh-release@v3`; Gradle Wrapper; JDK `apksigner`/`keytool`
 
 **Storage**: GitHub Actions artifacts for CI outputs and reports; GitHub Releases for the signed APK,
 certificate fingerprint, checksum, and release notes; protected GitHub Secrets/Environment for the

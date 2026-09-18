@@ -9,36 +9,35 @@ description: "Task list for GitHub Actions Android CI/CD"
 
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`
 
-**Tests**: Contract and integration validation tasks are included because the specification requires
-automated validation, signing verification, artifact integrity, and release safety.
+**Tests**: Contract tests and local Gradle checks are required by the specification and constitution.
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Parallelizable only when tasks use different files and have no incomplete dependency.
-- **[Story]**: Maps a task to the specification's user story.
+- **[P]**: Parallelizable only when tasks affect different files and have no incomplete dependency.
+- **[Story]**: Maps a task to its specification user story.
 - Every task includes an exact file path.
 
 ## Phase 1: Setup
 
-**Purpose**: Establish automation paths and safe signing conventions.
+**Purpose**: Establish automation paths and maintainable action-version conventions.
 
-- [X] T001 Create `.github/workflows/` and `scripts/ci/` directories and document workflow/artifact naming in `.github/workflows/README.md`.
-- [X] T002 Document Java 17, Android API 36, Gradle wrapper, exact SHA-pinned action dependencies, and repository permission assumptions in `.github/workflows/README.md`.
-- [X] T003 Document the fixed `main` release branch, `YYYY.MM.DD` release-tag pattern, duplicate-tag policy, serialized `cancel-in-progress: false` policy, 14-day CI artifact retention, and protected signing-secret names in `.github/workflows/README.md`.
+- [X] T001 Document workflow names, artifact names, Java 17, Android API 36, Gradle wrapper usage, and stable major-version action tags in `.github/workflows/README.md`.
+- [X] T002 Document the fixed `main` release branch, `YYYY.MM.DD` tag format, duplicate-tag policy, serialized release policy, 14-day artifact retention, and protected secret names in `.github/workflows/README.md`.
+- [X] T003 Document the action update policy and the tradeoff between stable major tags and immutable SHA pins in `specs/002-github-actions-android-cicd/research.md`.
 
 ---
 
 ## Phase 2: Foundational
 
-**Purpose**: Provide shared workflow validation and signing-material safety checks.
+**Purpose**: Provide shared workflow and signing-material validation before user-story work.
 
-**⚠️ CRITICAL**: Complete this phase before user-story workflows.
+**CRITICAL**: Complete this phase before workflow implementation.
 
 - [X] T004 [P] Create `scripts/ci/validate_workflows.py` to parse every `.github/workflows/*.yml` file and fail on invalid YAML or missing required workflow keys.
-- [X] T005 Extend `scripts/ci/validate_workflows.py` with permissions and secret-safety checks: validation must use `contents: read`, only release publication may use `contents: write`, and workflows must not print tokens, keystore content, or passwords.
-- [X] T006 Add `scripts/ci/validate_release_secrets.py` to validate required signing secret names/configuration without printing values, and to reject repository-tracked keystore files.
+- [X] T005 Extend `scripts/ci/validate_workflows.py` with least-privilege permission and secret-safety checks.
+- [X] T006 Add `scripts/ci/validate_release_secrets.py` to validate required secret references without printing values and reject tracked keystore files.
 
-**Checkpoint**: Static workflow and signing-material safety checks are ready.
+**Checkpoint**: Static workflow and signing-material checks are ready.
 
 ---
 
@@ -46,19 +45,19 @@ automated validation, signing verification, artifact integrity, and release safe
 
 **Goal**: Validate pull requests and pushes to `main` with the supported Android toolchain.
 
-**Independent Test**: Run `python3 scripts/ci/validate_workflows.py`, inspect `android-ci.yml`, and trigger it with a valid and intentionally failing change.
+**Independent Test**: Run workflow validation, inspect `android-ci.yml`, and verify CI runs detekt, unit tests, debug assembly, and artifact uploads.
 
 ### Tests for User Story 1
 
-- [X] T007 [P] [US1] Add trigger/toolchain contract tests in `scripts/ci/test_validate_workflows.py` for pull requests, pushes to `main`, Java 17, Android API 36, Gradle wrapper usage, `contents: read`, and the exact SHA-pinned checkout/setup/cache/SDK action references from `plan.md`.
-- [X] T008 [P] [US1] Add command/artifact contract tests in `scripts/ci/test_ci_commands.py` for `detekt`, `testDebugUnitTest`, `assembleDebug`, debug APK upload, diagnostic-report upload, and `retention-days: 14`.
+- [X] T007 [P] [US1] Add trigger, toolchain, and permission contract tests in `scripts/ci/test_validate_workflows.py`.
+- [X] T008 [P] [US1] Add command, artifact, retention, and stable major-version action-tag tests in `scripts/ci/test_ci_commands.py`.
 
 ### Implementation for User Story 1
 
-- [X] T009 [US1] Create `.github/workflows/android-ci.yml` with pull-request and `main` push triggers, Ubuntu setup, the exact SHA-pinned actions from `plan.md`, Java 17, Android API 36 preparation, and Gradle caching.
-- [X] T010 [US1] Add required `./gradlew detekt`, `./gradlew testDebugUnitTest`, and `./gradlew assembleDebug` steps to `.github/workflows/android-ci.yml`, with command failures failing the job.
-- [X] T011 [US1] Add debug APK and Gradle/test/quality report uploads to `.github/workflows/android-ci.yml` with documented retention and failure-time diagnostics.
-- [X] T012 [US1] Document validation triggers, stages, artifacts, local reproduction, and action-version policy in `.github/workflows/README.md`.
+- [X] T009 [US1] Create `.github/workflows/android-ci.yml` with pull-request and `main` push triggers, Ubuntu setup, Java 17, Android API 36, Gradle caching, and stable major-version action tags from `plan.md`.
+- [X] T010 [US1] Add `./gradlew --no-daemon detekt`, `testDebugUnitTest`, and `assembleDebug` steps to `.github/workflows/android-ci.yml`.
+- [X] T011 [US1] Add debug APK and diagnostic report uploads with 14-day retention and failure-time diagnostics to `.github/workflows/android-ci.yml`.
+- [X] T012 [US1] Document validation triggers, stages, artifacts, local reproduction, and action-tag update policy in `.github/workflows/README.md`.
 
 **Checkpoint**: Pull requests and `main` pushes provide reproducible Android validation results.
 
@@ -66,26 +65,26 @@ automated validation, signing verification, artifact integrity, and release safe
 
 ## Phase 4: User Story 2 - Trigger an on-demand signed release from the default branch (Priority: P1)
 
-**Goal**: Let an authorized developer publish a release-signed APK to GitHub Releases from `main`.
+**Goal**: Publish a release-signed APK to GitHub Releases from `main`.
 
-**Independent Test**: Validate the release workflow statically, run a test release with a unique tag from `main`, and verify wrong-branch, duplicate-tag, failed-build, missing-secret, and signature-failure paths publish nothing.
+**Independent Test**: Validate the release workflow, run it with a unique date tag from `main`, and verify branch, duplicate, signing, failure, and publication behavior.
 
 ### Tests for User Story 2
 
-- [X] T013 [US2] Add release trigger/input/permission contract tests in `scripts/ci/test_release_workflow.py` for `workflow_dispatch`, required `YYYY.MM.DD` release-tag validation, fixed `main` publication guard, and minimum write permission.
-- [X] T014 [US2] Extend `scripts/ci/test_release_workflow.py` with safety-order tests asserting validation precedes signing/publication, `cancel-in-progress: false` serialization is configured, duplicate date tags/releases fail visibly, and publication cannot silently overwrite an existing release.
-- [X] T015 [US2] Add signing contract tests in `scripts/ci/test_release_signing.py` asserting protected secret references, temporary keystore handling, `apksigner verify`, certificate fingerprint output, SHA-256 checksum generation, and cleanup steps.
+- [X] T013 [US2] Add release trigger, input, branch, and permission contract tests in `scripts/ci/test_release_workflow.py`.
+- [X] T014 [US2] Add safety-order, concurrency, duplicate-release, and calendar-date validation tests in `scripts/ci/test_release_workflow.py`.
+- [X] T015 [US2] Add signing contract tests for protected secrets, temporary storage, `apksigner verify`, certificate metadata, checksum generation, and cleanup in `scripts/ci/test_release_signing.py`.
 
 ### Implementation for User Story 2
 
-- [X] T016 [US2] Create `.github/workflows/android-release.yml` with `workflow_dispatch`, required unique `YYYY.MM.DD` release-tag input, Ubuntu setup, the exact SHA-pinned actions from `plan.md`, Java 17, Android API 36, and Gradle wrapper caching.
-- [X] T017 [US2] Add the fixed `main` ref guard, one-release-at-a-time concurrency group with `cancel-in-progress: false`, and duplicate date-tag/release preflight to `.github/workflows/android-release.yml`, failing before publication when unsafe.
-- [X] T018 [US2] Add detekt, debug unit tests, and `assembleRelease` to `.github/workflows/android-release.yml` before any signing or publication step.
-- [X] T019 [US2] Add protected `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` handling to `.github/workflows/android-release.yml`, decoding only to temporary runner storage and deleting the keystore after use.
-- [X] T020 [US2] Configure the release build/signing step in `.github/workflows/android-release.yml` to sign the release APK with the project-owned key, run `apksigner verify`, and fail on verification errors.
-- [X] T021 [US2] Add certificate fingerprint extraction, SHA-256 checksum generation, source revision metadata, and release notes/assets to `.github/workflows/android-release.yml`.
-- [X] T022 [US2] Add the GitHub Release publication step to `.github/workflows/android-release.yml` using `contents: write`, the signed APK, fingerprint/checksum metadata, and no token/secret output.
-- [X] T023 [US2] Document keystore generation, secure backup, Base64 secret storage, required secret names, release trigger, signature verification, and GitHub Release output in `.github/workflows/README.md`.
+- [X] T016 [US2] Create `.github/workflows/android-release.yml` with manual dispatch, `main` guard, Java 17, Android API 36, Gradle caching, and stable major-version action tags from `plan.md`.
+- [X] T017 [US2] Add serialized concurrency and duplicate tag/release preflight before signing or publication in `.github/workflows/android-release.yml`.
+- [X] T018 [US2] Add detekt, debug unit tests, and `assembleRelease` before signing or publication in `.github/workflows/android-release.yml`.
+- [X] T019 [US2] Load the four protected signing secrets into temporary runner storage and remove signing material unconditionally in `.github/workflows/android-release.yml`.
+- [X] T020 [US2] Sign and verify the release APK with `apksigner verify`, failing before publication on verification errors in `.github/workflows/android-release.yml`.
+- [X] T021 [US2] Generate certificate metadata, SHA-256 checksum, source revision, and release notes/assets in `.github/workflows/android-release.yml`.
+- [X] T022 [US2] Publish the signed APK and public verification metadata with `softprops/action-gh-release@v3` in `.github/workflows/android-release.yml`.
+- [X] T023 [US2] Document keystore generation, secure backup, protected secret setup, release triggering, signature verification, and GitHub Release outputs in `.github/workflows/README.md`.
 
 **Checkpoint**: A valid `main` run publishes one traceable signed APK; unsafe or failed runs publish nothing.
 
@@ -95,31 +94,32 @@ automated validation, signing verification, artifact integrity, and release safe
 
 **Goal**: Make setup, validation, signing, failure, and publication evidence easy to locate.
 
-**Independent Test**: Inspect workflow summaries, logs, uploaded reports, signed APK metadata, certificate fingerprint, checksum, and release notes after validation and release runs.
+**Independent Test**: Inspect workflow summaries, logs, artifacts, signed APK metadata, certificate fingerprint, checksum, and release notes.
 
 ### Tests for User Story 3
 
-- [X] T024 [P] [US3] Add workflow-stage contract tests in `scripts/ci/test_workflow_diagnostics.py` for named setup, validation, build, signing, verification, artifact, and publication stages.
-- [X] T025 [US3] Extend `scripts/ci/test_workflow_diagnostics.py` with artifact/metadata tests for `retention-days: 14`, source revision, failure-report uploads, certificate fingerprint, SHA-256 checksum, and release-readiness evidence locations.
+- [X] T024 [P] [US3] Add workflow-stage contract tests in `scripts/ci/test_workflow_diagnostics.py`.
+- [X] T025 [US3] Add artifact retention, source revision, failure-report, certificate, checksum, summary, and readiness-evidence tests in `scripts/ci/test_workflow_diagnostics.py`.
 
 ### Implementation for User Story 3
 
-- [X] T026 [US3] Add named summary steps and failure-time diagnostic collection to `.github/workflows/android-ci.yml`.
-- [X] T027 [US3] Add signing, verification, source revision, checksum, and publication evidence to `.github/workflows/android-release.yml` without exposing secret values.
-- [X] T028 [US3] Update `README.md` with validation and signed-release instructions, `main` branch policy, secret handling, artifact locations, fingerprint/checksum verification, troubleshooting, and app-store scope boundaries.
+- [X] T026 [US3] Add named workflow summary steps and failure-time diagnostic collection to `.github/workflows/android-ci.yml`.
+- [X] T027 [US3] Add signing, verification, source revision, checksum, cleanup, and publication evidence without secret exposure to `.github/workflows/android-release.yml`.
+- [X] T028 [US3] Update `README.md` with validation, signed-release, branch, secret, artifact, fingerprint, checksum, troubleshooting, and app-store scope documentation.
 
-**Checkpoint**: Developers can identify the failed stage and verify a downloaded release APK.
+**Checkpoint**: Developers can identify failed stages and verify a downloaded release APK.
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-**Purpose**: Run local checks, quickstart validation, and final security review.
+**Purpose**: Run local checks, quickstart validation, and final review.
 
 - [X] T029 [P] Add `scripts/ci/run_tests.sh` to execute workflow validation, Python contract tests, and documented Gradle preflight commands.
-- [X] T030 [P] Add `scripts/ci/README.md` describing static checks, safe test-release validation, keystore setup, and secret hygiene.
-- [X] T031 Run all locally verifiable scenarios in `specs/002-github-actions-android-cicd/quickstart.md`, record 95% validation, 5-minute release-start, and 2-minute evidence-location results, and keep credentials/key material out of commits; defer live GitHub release execution until protected secrets are configured.
-- [X] T032 Review `.github/workflows/`, `scripts/ci/`, and `README.md` for least-privilege permissions, secret leakage, keystore cleanup, duplicate-release behavior, and focused reviewable changes.
+- [X] T030 [P] Document static checks, safe test-release validation, keystore setup, and secret hygiene in `scripts/ci/README.md`.
+- [X] T031 Run all locally verifiable scenarios in `specs/002-github-actions-android-cicd/quickstart.md` and record release-readiness evidence without committing credentials or key material.
+- [X] T032 Review `.github/workflows/`, `scripts/ci/`, and `README.md` for permissions, secret leakage, cleanup, duplicate-release behavior, and stable action-tag consistency.
+- [ ] T033 Configure the protected GitHub `release` Environment, run one disposable unique-date signed release from `main`, and record branch, signature, fingerprint, checksum, publication, and cleanup evidence.
 
 ---
 
@@ -130,42 +130,36 @@ automated validation, signing verification, artifact integrity, and release safe
 - **Setup (Phase 1)**: No dependencies.
 - **Foundational (Phase 2)**: Depends on Setup and blocks all stories.
 - **User Story 1 (Phase 3)**: Depends on Phase 2 and delivers the MVP validation pipeline.
-- **User Story 2 (Phase 4)**: Depends on Phase 2 and reuses US1 toolchain commands.
+- **User Story 2 (Phase 4)**: Depends on Phase 2 and reuses US1 toolchain conventions.
 - **User Story 3 (Phase 5)**: Depends on US1 and US2 workflow stages.
-- **Polish (Phase 6)**: Depends on all desired stories.
+- **Polish (Phase 6)**: Depends on all desired stories; T033 also requires GitHub Environment configuration.
 
 ### User Story Dependencies
 
-- **US1 (P1)**: Starts after Phase 2; independent MVP.
-- **US2 (P1)**: Starts after Phase 2; shares validation conventions with US1 but must pass its own release tests.
-- **US3 (P2)**: Starts after the US1/US2 workflow files exist.
+- **US1 (P1)**: Starts after Phase 2; independently testable.
+- **US2 (P1)**: Starts after Phase 2; independently testable with protected secrets.
+- **US3 (P2)**: Starts after the US1 and US2 workflow files exist.
 
 ### Within Each User Story
 
 - Tests are written before implementation and should fail for missing behavior.
-- Workflow structure precedes command, signing, artifact, and publication steps.
+- Workflow structure precedes commands, signing, artifacts, and publication.
 - Static contracts pass before GitHub Actions runs are triggered.
-- Story checkpoint validation completes before the next story.
+- Live release validation occurs only after protected secrets are configured.
 
 ### Parallel Opportunities
 
-- T004, T006 can run in parallel after setup.
+- T004 and T006 can run in parallel after Setup.
 - T007 and T008 can run in parallel before US1 implementation.
-- T024 can run in parallel with other US3 preparation; T025 follows T024 because both use the same file.
-- T029 and T030 can run in parallel during polish.
-- T013–T015 are intentionally sequential because T013/T014 share a file and T015 validates the completed signing contract.
+- T013, T014, and T015 can run in parallel because they target separate test concerns in the same release-contract area only after coordination.
+- T024 can run in parallel with US3 implementation preparation; T025 follows T024.
+- T029 and T030 can run in parallel during Polish.
 
 ## Parallel Example: User Story 1
 
 ```text
 Task: T007 Add trigger/toolchain contract tests in scripts/ci/test_validate_workflows.py
-Task: T008 Add command/artifact contract tests in scripts/ci/test_ci_commands.py
-```
-
-## User Story 2 Ordering
-
-```text
-T013 → T014 → T015 → T016 → T017 → T018 → T019 → T020 → T021 → T022 → T023
+Task: T008 Add command/artifact/action-tag tests in scripts/ci/test_ci_commands.py
 ```
 
 ## Implementation Strategy
@@ -174,30 +168,18 @@ T013 → T014 → T015 → T016 → T017 → T018 → T019 → T020 → T021 →
 
 1. Complete Setup and Foundational phases.
 2. Implement and test `.github/workflows/android-ci.yml`.
-3. Run static checks and local Gradle validation.
-4. Trigger the workflow on GitHub and verify artifacts.
+3. Run static checks and Gradle preflight.
+4. Trigger CI on GitHub and verify artifacts.
 
 ### Incremental Delivery
 
-1. Add US1 for automated build validation.
-2. Add US2 for controlled, signed GitHub Release APK publication.
-3. Add US3 for diagnostics and user verification metadata.
-4. Run the complete quickstart and security review before delivery.
+1. Add US1 validation.
+2. Add US2 signed GitHub Release publication.
+3. Add US3 diagnostics and verification metadata.
+4. Run the quickstart and live release validation.
 
 ### Notes
 
-- `[P]` is used only where tasks affect different files and have no incomplete dependency.
 - Never commit keystores, Base64 keystore content, passwords, tokens, or generated release secrets.
-- Instrumented tests remain outside the baseline GitHub-hosted workflow unless emulator provisioning is separately specified.
-
-## Phase 7: Convergence
-
-- [X] T033 Add normalized-date equality validation and negative contract tests for invalid `YYYY.MM.DD` dates in `.github/workflows/android-release.yml` and `scripts/ci/test_release_workflow.py` per FR-005 (partial).
-- [X] T034 Add explicit `$GITHUB_STEP_SUMMARY` setup, validation, build, signing, verification, artifact, and publication evidence to `.github/workflows/android-ci.yml`, `.github/workflows/android-release.yml`, and `scripts/ci/test_workflow_diagnostics.py` per FR-010/T026 (missing).
-- [ ] T035 Configure the protected GitHub `release` Environment with the four signing secrets, execute a disposable unique-date GitHub Release from `main`, and record the live verification result without committing credentials or key material per FR-008/US2-AC3 (partial).
-- [X] T036 Add Python cache patterns to `/home/xzkj5g/work-utilities/.gitignore` and remove generated `scripts/ci/__pycache__/` files from the deliverable per plan source hygiene (missing).
-- [X] T037 Extend `scripts/ci/test_validate_workflows.py` to assert every action SHA listed in `plan.md`, including artifact upload and release publication pins per plan: exact action dependencies (partial).
-
-## Phase 8: Convergence
-
-- [ ] T038 Complete the protected GitHub `release` Environment setup and run a disposable unique-date signed release from `main`, recording branch, signature, fingerprint, checksum, publication, and cleanup evidence without committing credentials or key material per FR-008/US2-AC3 (partial).
+- Instrumented tests remain outside the baseline workflow unless emulator provisioning is specified.
+- Stable major-version action tags are intentional; update them during planned maintenance.

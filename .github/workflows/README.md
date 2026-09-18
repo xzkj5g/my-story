@@ -3,16 +3,16 @@
 ## Validation workflow
 
 `android-ci.yml` runs on pull requests and pushes to `main`. It uses Java 17, Android API 36,
-the Gradle wrapper, and the following actions pinned to immutable commit SHAs:
+the Gradle wrapper, and stable major-version action tags:
 
-| Action | Version | SHA |
-|---|---|---|
-| `actions/checkout` | v6 | `de7274f081f381c8f8158605e0321c36c376e2e6` |
-| `actions/setup-java` | v7 | `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` |
-| `gradle/actions/setup-gradle` | v6 | `9c971963bec38e04b3d30dcc455b5382be2fdbfb` |
-| `android-actions/setup-android` | v4 | `be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd` |
-| `actions/upload-artifact` | v8 | `3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c` |
-| `softprops/action-gh-release` | v3 | `efb35369e0ad2afab669f228072c1b0d510eae64` |
+| Action | Major version |
+|---|---|
+| `actions/checkout` | v6 |
+| `actions/setup-java` | v6 |
+| `gradle/actions/setup-gradle` | v6 |
+| `android-actions/setup-android` | v4 |
+| `actions/upload-artifact` | v7 |
+| `softprops/action-gh-release` | v3 |
 
 The workflow runs detekt, debug unit tests, and a debug APK build. Debug APKs and diagnostics are
 uploaded with `retention-days: 14`. Local reproduction:
@@ -60,6 +60,7 @@ The validation workflow has `contents: read`. Only the release workflow has `con
 Signing secrets are never available to pull-request builds and must not be printed in logs.
 
 Use `python3 scripts/ci/validate_workflows.py` and
-`python3 scripts/ci/validate_release_secrets.py` for local static checks. If a workflow fails,
+`python3 scripts/ci/validate_release_secrets.py` for local static checks. Review major-version tags
+during planned action maintenance. If a workflow fails,
 inspect the named setup, validation, signing, verification, or publication step and download the
 14-day diagnostic artifacts.
