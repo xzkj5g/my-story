@@ -220,24 +220,24 @@ order, compile, and verify the output plays clips in the newly defined order.
 - [X] T034 [P] [US2] Unit test: `SelectionSequence.remove(index)` shifts remaining entries to
       keep their relative order with no gap or duplicate (Acceptance Scenario 3), in
       `app/src/test/kotlin/com/example/videocompiler/domain/model/SelectionSequenceRemoveTest.kt`.
-- [ ] T035 [P] [US2] Instrumented test: quickstart.md Scenario 3 — select 3 videos (A, B, C),
+- [X] T035 [P] [US2] Instrumented test: quickstart.md Scenario 3 — select 3 videos (A, B, C),
       move C to first position, remove B, compile, and verify the output plays C then A only, in
       `app/src/androidTest/kotlin/com/example/videocompiler/ReorderSequenceInstrumentedTest.kt`.
-- [ ] T036 [P] [US2] Instrumented test: SC-005 — reorder a sequence of at least 10 selected media
+- [X] T036 [P] [US2] Instrumented test: SC-005 — reorder a sequence of at least 10 selected media
       items without the app losing or misordering any entry, in
       `app/src/androidTest/kotlin/com/example/videocompiler/ReorderLargeSequenceInstrumentedTest.kt`.
 
 ### Implementation for User Story 2
 
-- [ ] T037 [US2] Implement the `ui/sequence` reorder screen in
+- [X] T037 [US2] Implement the `ui/sequence` reorder screen in
       `app/src/main/kotlin/com/example/videocompiler/ui/sequence/`: display the current
       `SelectionSequence` as an ordered list independent of selection order (FR-002), and bind
       drag-to-reorder to `SelectionSequence.move` with the displayed sequence updating
       immediately (FR-003, Acceptance Scenario 1) (depends on T009).
-- [ ] T038 [US2] Implement the remove-item action in the `ui/sequence` screen bound to
+- [X] T038 [US2] Implement the remove-item action in the `ui/sequence` screen bound to
       `SelectionSequence.remove`, keeping remaining items' relative order with no gap/duplicate
       (FR-004, Acceptance Scenario 3) (depends on T009, T037).
-- [ ] T039 [US2] Ensure the compile flow (`ui/compile`, T030) always consumes the current,
+- [X] T039 [US2] Ensure the compile flow (`ui/compile`, T030) always consumes the current,
       possibly-reordered `SelectionSequence` — never the original selection order (FR-006)
       (depends on T030, T037).
 
@@ -264,7 +264,7 @@ matches the preset exactly with every item fully visible.
       `outputWidth × outputHeight` per the research.md §7 preset table (e.g., 1080p + 9:16 →
       1080×1920), in
       `app/src/test/kotlin/com/example/videocompiler/domain/model/OutputSettingsDimensionsTest.kt`.
-- [ ] T042 [P] [US3] Instrumented test: quickstart.md Scenario 4 — choose a 1080p/16:9/30fps
+- [X] T042 [P] [US3] Instrumented test: quickstart.md Scenario 4 — choose a 1080p/16:9/30fps
       preset, compile a sequence including a portrait clip, and verify the output file is exactly
       1920×1080 at 30fps (SC-003) with the portrait clip's full image visible and padded, no
       cropping or stretching (SC-004), in
@@ -272,11 +272,11 @@ matches the preset exactly with every item fully visible.
 
 ### Implementation for User Story 3
 
-- [ ] T043 [US3] Implement the `ui/outputsettings` preset picker screen in
+- [X] T043 [US3] Implement the `ui/outputsettings` preset picker screen in
       `app/src/main/kotlin/com/example/videocompiler/ui/outputsettings/` for `resolutionTier`,
       `aspectRatio`, and `frameRate` — defined preset values only, no free-form numeric entry
       (FR-005) (depends on T006).
-- [ ] T044 [US3] Configure the `Transformer`'s output `Format`/`TransformationRequest` width,
+- [X] T044 [US3] Configure the `Transformer`'s output `Format`/`TransformationRequest` width,
       height, and frame rate from the chosen `OutputSettings` (`resolutionTier` × `aspectRatio` →
       pixel dimensions per research.md §7; `frameRate` enum → target fps) so the compiled output
       exactly matches the user-selected preset regardless of source item dimensions (FR-007,
@@ -284,11 +284,11 @@ matches the preset exactly with every item fully visible.
       so any source item (photo or video) whose native aspect ratio differs from
       `settings.aspectRatio` is scaled to fit inside that output frame with padding — never
       cropped, never stretched (FR-008, SC-004) (depends on T023).
-- [ ] T045 [US3] Implement frame-rate conversion in `media/compiler` via the `Transformer`
+- [X] T045 [US3] Implement frame-rate conversion in `media/compiler` via the `Transformer`
       output format configuration, resampling/duplicating/dropping frames to match
       `settings.frameRate` without altering clip playback speed/duration (FR-008 Acceptance
       Scenario 4) (depends on T023).
-- [ ] T046 [US3] Wire the user's `ui/outputsettings` preset selection into the `ui/compile` flow
+- [X] T046 [US3] Wire the user's `ui/outputsettings` preset selection into the `ui/compile` flow
       so `CompileEngine.compile` is called with the user's chosen `OutputSettings` instead of the
       T032 default (depends on T043, T030).
 

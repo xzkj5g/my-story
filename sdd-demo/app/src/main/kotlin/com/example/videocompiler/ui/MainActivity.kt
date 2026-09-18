@@ -15,7 +15,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.videocompiler.ui.compile.CompileScreen
+import com.example.videocompiler.ui.outputsettings.OutputSettingsScreen
 import com.example.videocompiler.ui.selection.SelectionScreen
+import com.example.videocompiler.ui.sequence.SequenceScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -37,6 +39,14 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         SelectionScreen(
+                            state = state,
+                            controller = controller,
+                        )
+                        SequenceScreen(
+                            state = state,
+                            controller = controller,
+                        )
+                        OutputSettingsScreen(
                             state = state,
                             controller = controller,
                         )

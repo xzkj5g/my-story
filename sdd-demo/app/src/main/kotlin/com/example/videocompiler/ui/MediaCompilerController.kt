@@ -7,6 +7,7 @@ import android.provider.Settings
 import com.example.videocompiler.domain.model.CompileJob
 import com.example.videocompiler.domain.model.CompileJobStatus
 import com.example.videocompiler.domain.model.MediaType
+import com.example.videocompiler.domain.model.OutputSettings
 import com.example.videocompiler.domain.usecase.MediaValidationResult
 import com.example.videocompiler.domain.usecase.ValidateSourceMediaItem
 import com.example.videocompiler.service.CompileForegroundService
@@ -75,6 +76,26 @@ class MediaCompilerController(
                 setMessage("$fileName was rejected: ${result.reason.name.lowercase().replace('_', ' ')}")
             }
         }
+    }
+
+    /** US2 (FR-003): reorders the displayed sequence immediately; used by `ui/sequence`. */
+    fun moveItem(fromIndex: Int, toIndex: Int) {
+        _uiState.value = _uiState.value.copy(
+            selectionSequence = _uiState.value.selectionSequence.move(fromIndex, toIndex),
+        )
+    }
+
+    /** US2 (FR-004): removes an item, keeping remaining items' relative order with no gap. */
+    fun removeItem(index: Int) {
+        _uiState.value = _uiState.value.copy(
+            selectionSequence = _uiState.value.selectionSequence.remove(index),
+        )
+        refreshSelectionWarning()
+    }
+
+    /** US3 (FR-005): applies the user's chosen resolution/aspect ratio/frame rate preset. */
+    fun setOutputSettings(settings: OutputSettings) {
+        _uiState.value = _uiState.value.copy(outputSettings = settings)
     }
 
     fun onPermissionsDenied() {

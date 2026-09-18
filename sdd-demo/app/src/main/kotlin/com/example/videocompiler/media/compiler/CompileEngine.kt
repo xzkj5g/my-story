@@ -261,12 +261,14 @@ private fun defaultOutputDisplayName(): String {
 }
 
 private fun buildComposition(plan: CompositionPlan, settings: OutputSettings): Composition {
-    val videoEffects = listOf(
-        Presentation.createForWidthAndHeight(
-            settings.outputWidth,
-            settings.outputHeight,
-            Presentation.LAYOUT_SCALE_TO_FIT,
-        ),
+    // Applied per-item rather than at the Composition level: Composition-level video effects
+    // are only guaranteed to run when multiple sequences are combined (e.g. overlays); for a
+    // single video sequence, the Presentation resize/pad effect must be attached to each
+    // EditedMediaItem to reliably take effect (FR-007/FR-008, SC-003/SC-004).
+    val presentationEffect = Presentation.createForWidthAndHeight(
+        settings.outputWidth,
+        settings.outputHeight,
+        Presentation.LAYOUT_SCALE_TO_FIT,
     )
     val sequence = EditedMediaItemSequence(
         plan.segments.map { segment ->
@@ -276,15 +278,18 @@ private fun buildComposition(plan: CompositionPlan, settings: OutputSettings): C
             }
             val editedItemBuilder = EditedMediaItem.Builder(mediaItemBuilder.build())
             if (segment.source.mediaType == MediaType.PHOTO) {
-                editedItemBuilder
-                    .setDurationUs(segment.durationMs * 1_000L)
-                    .setFrameRate(settings.frameRate.fps)
+                editedItemBuilder.setDurationUs(segment.durationMs * 1_000L)
             }
+            // Resample every segment (video or photo) to the target frame rate (FR-008
+            // Acceptance Scenario 4) without altering its playback speed/duration — Media3
+            // duplicates/drops frames internally to hit this rate.
+            editedItemBuilder
+                .setFrameRate(settings.frameRate.fps)
+                .setEffects(Effects(emptyList(), listOf(presentationEffect)))
             editedItemBuilder.build()
         },
     )
     return Composition.Builder(sequence)
-        .setEffects(Effects(emptyList(), videoEffects))
         .experimentalSetForceAudioTrack(true)
         .build()
 }
