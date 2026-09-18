@@ -16,9 +16,11 @@ This document records the decision, rationale, and rejected alternatives for eac
   third-party licensing (unlike FFmpeg). Directly satisfies the constitution's Simplicity/YAGNI
   principle and its Android tech-stack requirement to prefer official Jetpack libraries.
 - **Alternatives considered**:
-  - **Hand-rolled `MediaCodec`/`MediaMuxer` pipeline**: full control, but a large, error-prone
-    amount of code to reimplement scaling, padding, and audio silence generation that Media3
-    already provides — rejected as unnecessary complexity (violates Simplicity/YAGNI).
+  - **General hand-rolled `MediaCodec`/`MediaMuxer` pipeline**: full control, but a large,
+    error-prone amount of code to reimplement scaling, padding, composition, and audio silence
+    generation that Media3 already provides — rejected as unnecessary complexity (violates
+    Simplicity/YAGNI). A narrowly scoped exception is retained for low-fps upsampling because
+    Media3 1.10.1 cannot produce additional output frames when the source is below the target fps.
   - **FFmpeg via a wrapper library (e.g., mobile-ffmpeg forks)**: powerful and format-flexible,
     but adds a large third-party native dependency, licensing considerations (GPL/LGPL builds),
     and duplicates functionality Media3 already covers — rejected.
@@ -36,12 +38,20 @@ This document records the decision, rationale, and rejected alternatives for eac
 ## 3. Frame rate conversion
 
 - **Decision**: Configure the `Transformer`'s output video format with the user-selected target
-  frame rate; Media3's frame processing pipeline resamples/duplicates or drops frames as needed to
-  match, without altering clip playback speed/duration (per FR-008/FR-009's spirit and Acceptance
-  Scenario 4 of User Story 3).
-- **Rationale**: Built-in Transformer behavior; no custom frame-duplication logic required.
-- **Alternatives considered**: Manual frame duplication via custom video processing — rejected,
-  unnecessary given Transformer support.
+  frame rate for normal conversion. Media3 1.10.1 correctly caps higher-fps sources by dropping
+  frames, but does not upsample a source whose native fps is below the target. For that direction,
+  `FrameRateUpsampler` sequentially decodes display-order frames with `MediaCodec`, holds each
+  decoded YUV frame, duplicates it into evenly spaced target-fps slots, and re-encodes the
+  temporary video before it enters the Media3 composition.
+- **Rationale**: This hybrid keeps Media3 responsible for composition, scaling, audio, and photo
+  rendering while satisfying FR-007 for lower-fps sources. Sequential decode avoids corrupting
+  B-frame reference order and avoids the O(n²) behavior of independently seeking with
+  `MediaMetadataRetriever.getFrameAtTime()`. The implementation is covered by the T054
+  instrumented 30fps-to-60fps test and the existing output-settings suite.
+- **Alternatives considered**: Container-level encoded-sample duplication was rejected because
+  rewriting timestamps without decoding corrupts B-frame picture-order/reference continuity.
+  Per-output-slot `MediaMetadataRetriever` seeking was rejected because it re-decodes each GOP
+  repeatedly and becomes O(n²). A general custom MediaCodec pipeline remains out of scope.
 
 ## 4. Silent audio track insertion for video-only clips
 

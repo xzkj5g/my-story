@@ -359,6 +359,14 @@ matches the preset exactly with every item fully visible.
 
 ---
 
+## Phase 9: Convergence
+
+- [X] T055 Document the justified `MediaCodec` decode/re-encode exception introduced by T054 in
+      `plan.md` and `research.md`, including the Media3 limitation and the tested rationale for
+      retaining the implementation (plan: no-custom-MediaCodec constraint, contradicts)
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

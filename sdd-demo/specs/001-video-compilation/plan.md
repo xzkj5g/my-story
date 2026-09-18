@@ -18,10 +18,12 @@ fixed default duration of 3 seconds. Clips (and photo segments) without audio ge
 inserted so the output has one continuous audio track. Compilation runs as an Android foreground
 service with a progress notification so it survives backgrounding, and stops cleanly if the app
 is force-closed. Technical approach: use the official AndroidX Media3 Transformer/Composition
-APIs (`androidx.media3:media3-transformer`) to perform concatenation, scaling/letterboxing,
-frame-rate conversion, silent-audio generation, and static-image-to-video rendering, without
-hand-rolling a custom MediaCodec pipeline, per the constitution's Simplicity/YAGNI and Android
-tech stack principles.
+APIs (`androidx.media3:media3-transformer`) for the composition, scaling/letterboxing,
+down-conversion, silent-audio generation, and static-image-to-video rendering. Because Media3
+1.10.1's frame-rate setting caps but does not upsample lower-fps sources, a narrowly scoped
+`MediaCodec` decode/re-encode helper is used only for genuine frame-rate upsampling before
+composition. This is a documented exception to the preferred no-custom-pipeline approach,
+retained because it is required to satisfy FR-007 and is covered by on-device tests.
 
 ## Technical Context
 
@@ -76,7 +78,7 @@ with potentially many items per job, per the user's stated usage pattern during 
 |---|---|---|
 | I. User-Story-First Development | Feature is already decomposed into 3 independently testable, priority-ordered user stories (P1 compile, P2 reorder, P3 output settings) in spec.md; tasks (next phase) will preserve this decomposition. | PASS |
 | II. Specification Before Implementation | spec.md + clarifications are complete and were approved before this plan was written; this plan only selects *how*, not *what*. | PASS |
-| III. Simplicity & YAGNI | Uses official AndroidX Media3 Transformer/Composition APIs instead of a custom MediaCodec/FFmpeg pipeline; no additional abstraction layers introduced beyond standard UI/domain/data separation. | PASS |
+| III. Simplicity & YAGNI | Uses Media3 Transformer/Composition APIs for the full composition pipeline. A narrowly scoped MediaCodec decode/re-encode helper is an explicit exception required for true low-fps upsampling because Media3 1.10.1 only caps frame rate; it does not replace Media3 for composition, audio, scaling, or photo rendering. | PASS with documented exception |
 | IV. Automated Testing Required (NON-NEGOTIABLE) | Testing section defines unit + instrumented test strategy covering every user story's acceptance scenarios; tasks phase will generate per-story tests before implementation. | PASS |
 | V. Spec-Plan-Tasks-Code Consistency | This plan traces every functional requirement (FR-001..FR-017) to a component in Project Structure / data-model; research.md documents rationale for each technical decision, including the photo-support scope amendment added after initial planning. | PASS |
 | VI. Small, Reviewable Commits | Not an architectural concern; will be enforced during `/speckit-tasks` and implementation by keeping tasks small and story-scoped. | PASS (deferred to implementation) |
@@ -117,7 +119,7 @@ app/
 │   ├── data/
 │   │   └── mediastore/       # MediaStore-backed repository: list/query/save media items
 │   ├── media/
-│   │   └── compiler/         # Media3 Transformer/Composition wrapper (concat, fit, silence, photo-to-video)
+│   │   └── compiler/         # Media3 Transformer/Composition wrapper plus scoped low-fps upsampler
 │   └── service/
 │       └── CompileForegroundService.kt   # FR-013 background-survivable compile job runner
 ├── src/test/kotlin/…          # Unit tests: domain + media composition-decision logic
