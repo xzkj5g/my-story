@@ -314,6 +314,26 @@ matches the preset exactly with every item fully visible.
 
 ---
 
+## Phase 7: Convergence
+
+- [ ] T052 [P] Construct and expose a `CompiledOutputVideo` (per data-model.md's `CompileJob
+      1──0..1 CompiledOutputVideo` relationship) when a `CompileJob` transitions to `SUCCEEDED`,
+      wiring `resolution`/`aspectRatio`/`frameRate` from the job's `outputSettings` snapshot and
+      `itemOrder` from its `sequence` snapshot, in
+      `app/src/main/kotlin/com/example/videocompiler/domain/model/CompileJob.kt` and
+      `app/src/main/kotlin/com/example/videocompiler/media/compiler/CompileEngine.kt` (partial;
+      `CompiledOutputVideo.kt` from T008 is currently defined but never constructed or
+      referenced anywhere in `app/src/main` or tests) per data-model.md, FR-007, SC-002, SC-003.
+- [ ] T053 [P] Add instrumented tests for at least 2 more `OutputSettings` preset combinations
+      beyond the single 1080p/16:9/30fps case already covered by `OutputSettingsInstrumentedTest`
+      (T042) — e.g., a `9:16` case and a non-30fps case — verifying the real compiled output file
+      matches each chosen preset exactly, in
+      `app/src/androidTest/kotlin/com/example/videocompiler/OutputSettingsInstrumentedTest.kt`
+      (partial; SC-003's "100%" claim is currently substantiated end-to-end for only 1 of 36
+      possible `resolutionTier × aspectRatio × frameRate` combinations) per SC-003.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
