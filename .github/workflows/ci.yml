@@ -85,12 +85,12 @@ jobs:
           GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
         run: scripts/ci/configure_google_sign_in.sh
 
+      - name: Build Android release APK
+        run: flutter build apk --release --dart-define-from-file=config/oauth.json
+
       - name: Run Android unit tests
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest
-
-      - name: Build Android release APK
-        run: flutter build apk --release --dart-define-from-file=config/oauth.json
 
       - name: Select iOS simulator
         id: simulator
