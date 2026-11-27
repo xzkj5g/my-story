@@ -86,9 +86,9 @@ final class StoryCompiler {
             guard let asset = assets[item.id] else {
                 throw StoryCompilerError.assetUnavailable("A selected item is no longer available.")
             }
-            let segment = item.isVideo
-                ? try loadVideo(asset)
-                : try loadPhoto(asset, settings: settings, index: index)
+            let segment = try item.isVideo
+                ? loadVideo(asset)
+                : loadPhoto(asset, settings: settings, index: index)
             segments.append(segment)
             emit(status: "running", progress: min(20, (index + 1) * 20 / items.count))
         }
