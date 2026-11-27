@@ -26,10 +26,8 @@ enum StoryComposition {
         ) else {
             throw StoryCompilerError.compositionFailed("Could not create the video track.")
         }
-        let audioTrack = composition.addMutableTrack(
-            withMediaType: .audio,
-            preferredTrackID: kCMPersistentTrackID_Invalid
-        )
+        // Added on first use: an audio track that never receives media makes some exports fail.
+        var audioTrack: AVMutableCompositionTrack?
 
         var cursor = CMTime.zero
         var instructions: [AVMutableVideoCompositionInstruction] = []
@@ -46,11 +44,17 @@ enum StoryComposition {
             try videoTrack.insertTimeRange(range, of: sourceVideo, at: cursor)
 
             // Clips without audio simply leave a gap in the audio track, which plays as silence.
-            if let sourceAudio = segment.asset.tracks(withMediaType: .audio).first, let audioTrack {
+            if let sourceAudio = segment.asset.tracks(withMediaType: .audio).first {
                 let audioDuration = min(duration, sourceAudio.timeRange.duration)
                 if audioDuration > .zero {
+                    if audioTrack == nil {
+                        audioTrack = composition.addMutableTrack(
+                            withMediaType: .audio,
+                            preferredTrackID: kCMPersistentTrackID_Invalid
+                        )
+                    }
                     let audioRange = CMTimeRange(start: sourceAudio.timeRange.start, duration: audioDuration)
-                    try audioTrack.insertTimeRange(audioRange, of: sourceAudio, at: cursor)
+                    try audioTrack?.insertTimeRange(audioRange, of: sourceAudio, at: cursor)
                 }
             }
 

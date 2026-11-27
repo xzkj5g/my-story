@@ -123,6 +123,9 @@ final class StillImageVideoWriterTests: XCTestCase {
     let done = expectation(description: "export")
     session.exportAsynchronously { done.fulfill() }
     wait(for: [done], timeout: 120)
+    if session.status != .completed {
+      print("EXPORT FAILED: status=\(session.status.rawValue) error=\(String(describing: session.error))")
+    }
     XCTAssertEqual(session.status, .completed, session.error?.localizedDescription ?? "")
 
     let exported = AVURLAsset(url: output)

@@ -106,6 +106,12 @@ jobs:
             -resultBundlePath build/ios-native-tests.xcresult \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Show iOS test failures
+        if: ${{ failure() }}
+        run: |
+          xcrun xcresulttool get test-results tests --path build/ios-native-tests.xcresult --compact || true
+          xcrun xcresulttool get test-results summary --path build/ios-native-tests.xcresult --compact || true
+
       - name: Build iOS app for iPhone and iPad
         run: flutter build ios --release --no-codesign --dart-define-from-file=config/oauth.json
 
