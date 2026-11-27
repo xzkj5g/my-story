@@ -1,89 +1,79 @@
-# Media Sequence Compiler
+# My Story
 
-A native Android app that lets you pick videos and photos from your device,
-arrange them into a single ordered sequence, choose an output resolution/
-aspect ratio/frame rate, and compile everything into one MP4 video saved to
-your gallery.
+Turn the photos and videos in your library into one video. Pick materials from your camera roll,
+review them as a simple timeline, choose a frame rate and aspect ratio, and My Story concatenates
+everything into a single MP4 saved on your device. Finished stories live in the in-app Library, and
+you can upload them to YouTube from the app.
 
-## Features
+The UI follows the Figma template (Splash and Home pages) for text, fonts, colors and layout.
 
-- **Select** any mix of videos and photos from device storage (system Photo
-  Picker on Android 13+, classic storage-backed picker as a fallback on older
-  versions).
-- **Reorder & remove** items in the selected sequence before compiling, via
-  simple up/down/remove controls.
-- **Choose output settings**: resolution tier, aspect ratio, and frame rate,
-  picked from a fixed set of presets (default: 1080p, 16:9, 30fps).
-- **Compile** the sequence into a single output video:
-  - Photos are shown for a fixed display duration with synthesized silent
-    audio; videos play at their original length.
-  - Every segment (video or photo) is resized/letterboxed to the chosen
-    output resolution/aspect ratio and resampled to the chosen frame rate.
-  - Compilation runs in a foreground service, so it continues if you leave
-    the app, and shows live progress plus a completion/failure notification.
-  - The finished video is saved to the device's `Movies/VideoCompiler`
-    gallery folder via `MediaStore` (no broader-than-necessary storage
-    permissions are requested; see `specs/001-video-compilation/research.md`
-    §9 for the permission model).
+## What the app does
 
-## Project structure
+- **Home**: the header and the two top buttons from the template, then every photo and video in the
+  library as a scrollable card grid. Tap cards to multi-select (numbered in tap order) and press
+  **create story**.
+- **Your story** (after create story): the selection as a horizontal thumbnail timeline (long-press
+  and drag to reorder, tap the cross to remove), a title, the only two choices - **frame rate**
+  (24 / 30 / 60) and **aspect ratio** (16:9, 9:16, 1:1) - and a **Start to create** button that leads
+  to a progress view with cancel.
+- **Library**: every story created by the app. Tap to play, delete from the viewer, or upload to
+  YouTube.
+- **Settings**: connect YouTube with the standard Google sign-in flow so stories can be uploaded.
 
-This app was built using a spec-driven workflow (Spec Kit); the full spec,
-plan, research, data model, and task breakdown live under
-`specs/001-video-compilation/`.
+How a story is built: items are concatenated in order. Photos are shown for 3 seconds with silent
+audio, videos keep their length and audio, and every segment is fitted (letterboxed) into the chosen
+frame. Output is 1080p-class (long edge 1920) at the chosen fps. The video is saved to `Movies/MyStory`
+on Android and into the Photos library on iOS and iPadOS.
+
+## Architecture
 
 ```text
-app/src/main/kotlin/com/example/videocompiler/
-├── domain/        # Pure Kotlin models & use cases (SourceMediaItem, OutputSettings,
-│                  # SelectionSequence, CompileJob, validation)
-├── data/          # MediaStore-backed repository for querying/saving media
-├── media/compiler/# CompositionPlanner (pure planning logic) + CompileEngine
-│                  # (Media3 Transformer-backed encoder)
-├── service/       # CompileForegroundService, notification, session store
-└── ui/            # Compose screens: selection, sequence (reorder), output
-                   # settings, compile progress; MediaCompilerController holds
-                   # the shared UI state
+lib/                  Flutter UI (shared by Android, iPhone and iPad)
+  screens/ widgets/   Splash, Home shell, Story editor, Library, Viewer, Settings
+  state/              ChangeNotifier controllers (selection, gallery, creation, library, YouTube)
+  services/           Interfaces + implementations: gallery (photo_manager), compiler channel,
+                      story repository, YouTube auth + resumable uploader
+android/              Android host app and the Media3 Transformer compile engine (Kotlin)
+ios/Runner/StoryCompiler/  AVFoundation compile engine (Swift)
+test/                 Dart unit and widget tests (fake services)
+ios/RunnerTests/      XCTest coverage of the Swift engine
+specs/                Spec Kit artifacts; 003 describes the Flutter app
+scripts/ci/           Static checks for the GitHub Actions workflows
 ```
 
-## Requirements
+Both native engines implement the same contract: method channel `my_story/compiler`
+(`startCompile`, `cancelCompile`, `resourceWarning`) and event channel `my_story/compiler_events`
+(`running` / `succeeded` / `failed` / `cancelled` with `progress`). Android returns the `assetId` of
+the video it saved into the gallery; iOS returns a temporary file that Dart saves into Photos.
 
-- Android 8.0 (API 26) or newer.
-- Devices without the system Photo Picker (pre-Android 13) will be prompted
-  for `READ_EXTERNAL_STORAGE` (and `WRITE_EXTERNAL_STORAGE` on API 26-28
-  only, required to save the compiled output pre-scoped-storage).
+## Run it locally
 
-## Building & testing
-
-From the `sdd-demo/` directory (requires JDK 17, Android SDK, and an
-emulator/device for instrumented tests):
+Requirements: Flutter 3.50 (Dart 3.14), JDK 17 and the Android SDK for Android, Xcode 16+ for iOS.
 
 ```sh
-./gradlew detekt                      # static analysis
-./gradlew testDebugUnitTest           # unit tests (domain + composition-planning logic)
-./gradlew connectedDebugAndroidTest   # instrumented tests (real Media3 encode, on-device)
+flutter pub get
+flutter run                       # a connected device or emulator
+flutter analyze && flutter test   # Dart checks
+(cd android && ./gradlew :app:testDebugUnitTest)   # Kotlin engine unit tests
 ```
 
-See `specs/001-video-compilation/quickstart.md` for manual end-to-end
-validation scenarios.
+YouTube sign-in needs OAuth client ids; without them the app runs and Settings says sign-in is not
+configured. See [docs/youtube-setup.md](docs/youtube-setup.md), then run with
+`flutter run --dart-define-from-file=config/oauth.json`.
 
-## GitHub Actions CI/CD
+Emulators often have weak video encoders, so Android may fall back to a smaller output size there;
+physical devices encode at the requested size.
 
-Pull requests and pushes to `main` run the Android validation workflow. It runs detekt, debug unit
-tests, and a debug APK build, then retains the APK and diagnostics for 14 days.
+## CI/CD
 
-An authorized developer can manually run the release workflow from `main` with a unique
-`YYYY.MM.DD` tag, such as `2026.09.18`. The workflow validates, signs, and verifies the release
-APK, publishes it to a GitHub Release with a certificate fingerprint and SHA-256 checksum, and
-never publishes to an app store.
+GitHub Actions (see `.github/workflows/README.md`):
 
-Configure these protected GitHub Secrets or `release` Environment values before releasing:
+- **CI** (`ci.yml`): workflow checks, `flutter analyze`, `flutter test`, then on a macOS runner the
+  Android unit tests and release APK, the iOS native XCTests on a simulator, and an unsigned iPhone
+  and iPad app. APK and iOS app are kept as artifacts for 14 days.
+- **Release** (`release.yml`): manual, from `main`, with a unique `YYYY.MM.DD` tag. Builds a signed
+  APK and AAB (protected secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+  `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) plus an unsigned iOS app and publishes them to a GitHub
+  Release. App Store signing and upload are not part of the pipeline yet.
 
-```text
-ANDROID_KEYSTORE_BASE64
-ANDROID_KEYSTORE_PASSWORD
-ANDROID_KEY_ALIAS
-ANDROID_KEY_PASSWORD
-```
-
-See `.github/workflows/README.md`, `scripts/ci/README.md`, and
-`specs/002-github-actions-android-cicd/quickstart.md` for setup, verification, and troubleshooting.
+Never commit keystores, provisioning profiles, tokens or `config/oauth.json`.

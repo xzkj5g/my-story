@@ -1,0 +1,170 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'cursor/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.50.1'
+
+jobs:
+  checks:
+    name: Static checks, analyze, and Flutter tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Python test dependencies
+        run: python3 -m pip install pyyaml
+
+      - name: Validate workflows and release secrets
+        run: |
+          python3 scripts/ci/validate_workflows.py
+          python3 scripts/ci/validate_release_secrets.py
+          python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+
+      - name: Install Dart packages
+        run: flutter pub get
+
+      - name: Run flutter analyze
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+  build:
+    name: Build Android and iOS on macOS
+    needs: checks
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK API 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Dart packages
+        run: flutter pub get
+
+      - name: Configure Google sign-in
+        env:
+          GOOGLE_SERVER_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+        run: scripts/ci/configure_google_sign_in.sh
+
+      - name: Select iOS simulator
+        id: simulator
+        run: echo "udid=$(scripts/ci/select_ios_simulator.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Build iOS app for the simulator
+        run: flutter build ios --simulator --debug --dart-define-from-file=config/oauth.json
+
+      - name: Run iOS native tests
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -destination "id=$SIMULATOR_UDID" \
+            -only-testing:RunnerTests \
+            -resultBundlePath build/ios-native-tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Show iOS test failures
+        if: ${{ failure() }}
+        run: |
+          xcrun xcresulttool get test-results tests --path build/ios-native-tests.xcresult --compact || true
+          xcrun xcresulttool get test-results summary --path build/ios-native-tests.xcresult --compact || true
+
+      - name: Build iOS app for iPhone and iPad
+        run: flutter build ios --release --no-codesign --dart-define-from-file=config/oauth.json
+
+      - name: Package iOS app
+        run: |
+          set -euo pipefail
+          mkdir -p build/artifacts
+          ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app build/artifacts/MyStory-ios-unsigned.zip
+
+      - name: Build Android release APK
+        run: flutter build apk --release --dart-define-from-file=config/oauth.json
+
+      - name: Run Android unit tests
+        working-directory: android
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Upload Android APK
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload unsigned iOS app
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-app-unsigned
+          path: build/artifacts/MyStory-ios-unsigned.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: validation-reports
+          path: |
+            build/ios-native-tests.xcresult
+            android/app/build/reports/
+            android/app/build/test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Write build workflow summary
+        if: ${{ always() }}
+        run: |
+          {
+            echo "## Build"
+            echo
+            echo "- Source revision: \`$GITHUB_SHA\`"
+            echo "- Stages: Android unit tests, release APK, iOS native tests, unsigned iPhone and iPad app."
+            echo "- The APK, the unsigned iOS app, and test reports are retained for 14 days."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Unique release date in YYYY.MM.DD format'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.50.1'
+
+jobs:
+  release:
+    name: Validate, sign, and publish release builds
+    runs-on: macos-latest
+    environment: release
+    steps:
+      - name: Check release branch
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [ "$RELEASE_REF" != "refs/heads/main" ]; then
+            echo "Releases are allowed only from main (received $RELEASE_REF)." >&2
+            exit 1
+          fi
+
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$RELEASE_TAG" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}$ ]]; then
+            echo "Release tag must match YYYY.MM.DD." >&2
+            exit 1
+          fi
+          normalized_tag="$(date -u -j -f '%Y.%m.%d' "$RELEASE_TAG" '+%Y.%m.%d' 2>/dev/null || true)"
+          if [ "$normalized_tag" != "$RELEASE_TAG" ]; then
+            echo "Release tag is not a valid calendar date." >&2
+            exit 1
+          fi
+
+      - name: Check for duplicate release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if gh api --silent "/repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "A Git tag named $RELEASE_TAG already exists." >&2
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "A GitHub Release named $RELEASE_TAG already exists." >&2
+            exit 1
+          fi
+
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK API 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Dart packages
+        run: flutter pub get
+
+      - name: Run flutter analyze
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Configure Google sign-in
+        env:
+          GOOGLE_SERVER_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+        run: scripts/ci/configure_google_sign_in.sh
+
+      - name: Configure Android signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keystore="$RUNNER_TEMP/android-release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          {
+            echo "storeFile=$keystore"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
+          chmod 600 android/key.properties
+
+      - name: Build and verify signed Android release
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-metadata
+          flutter build apk --release --dart-define-from-file=config/oauth.json --build-number "$GITHUB_RUN_NUMBER"
+          flutter build appbundle --release --dart-define-from-file=config/oauth.json --build-number "$GITHUB_RUN_NUMBER"
+          cp build/app/outputs/flutter-apk/app-release.apk release-metadata/app-release.apk
+          cp build/app/outputs/bundle/release/app-release.aab release-metadata/app-release.aab
+          build_tools="${ANDROID_HOME}/build-tools/36.0.0"
+          "$build_tools/apksigner" verify --verbose --print-certs release-metadata/app-release.apk \
+            > release-metadata/certificate.txt
+          shasum -a 256 release-metadata/app-release.apk > release-metadata/app-release.apk.sha256
+          printf 'source_revision=%s\nrelease_tag=%s\n' "$GITHUB_SHA" "$RELEASE_TAG" \
+            > release-metadata/release.txt
+
+      - name: Run Android unit tests
+        working-directory: android
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Build unsigned iOS release
+        run: |
+          set -euo pipefail
+          flutter build ios --release --no-codesign --dart-define-from-file=config/oauth.json --build-number "$GITHUB_RUN_NUMBER"
+          ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app release-metadata/MyStory-ios-unsigned.zip
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: ${{ inputs.release_tag }}
+          generate_release_notes: true
+          body_path: release-metadata/release.txt
+          files: |
+            release-metadata/app-release.apk
+            release-metadata/app-release.apk.sha256
+            release-metadata/app-release.aab
+            release-metadata/certificate.txt
+            release-metadata/MyStory-ios-unsigned.zip
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Remove temporary signing material
+        if: ${{ always() }}
+        run: |
+          rm -f "$RUNNER_TEMP/android-release.keystore"
+          rm -f android/key.properties
+
+      - name: Write release workflow summary
+        if: ${{ always() }}
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          {
+            echo "## Release"
+            echo
+            echo "- Source branch: \`main\`"
+            echo "- Release tag: \`$RELEASE_TAG\`"
+            echo "- Source revision: \`$GITHUB_SHA\`"
+            echo "- Stages: setup, validation, Android signing, verification, unsigned iOS build, and publication."
+            echo "- The signed APK and AAB, certificate fingerprint, SHA-256 checksum, and unsigned iOS app are attached when publication succeeds."
+          } >> "$GITHUB_STEP_SUMMARY"

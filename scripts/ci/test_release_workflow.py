@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 import unittest
 
-WORKFLOW = Path(".github/workflows/android-release.yml")
+WORKFLOW = Path(".github/workflows/release.yml")
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
@@ -22,15 +22,15 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_safety_order_and_concurrency(self) -> None:
         self.assertIn("cancel-in-progress: false", self.content)
-        self.assertLess(self.content.index("Check for duplicate release"), self.content.index("Sign and verify release APK"))
-        self.assertLess(self.content.index("Sign and verify release APK"), self.content.index("Publish GitHub Release"))
+        self.assertLess(self.content.index("Check for duplicate release"), self.content.index("Configure Android signing"))
+        self.assertLess(self.content.index("Build and verify signed Android release"), self.content.index("Publish GitHub Release"))
         self.assertIn("gh api --silent", self.content)
         self.assertIn("gh release view", self.content)
 
     def test_calendar_date_is_normalized_before_signing(self) -> None:
         self.assertIn("normalized_tag=", self.content)
         self.assertIn('[ "$normalized_tag" != "$RELEASE_TAG" ]', self.content)
-        self.assertLess(self.content.index("Validate release tag"), self.content.index("Sign and verify release APK"))
+        self.assertLess(self.content.index("Validate release tag"), self.content.index("Configure Android signing"))
         for invalid_tag in ("2026.02.29", "2026.04.31"):
             with self.assertRaises(ValueError):
                 datetime.strptime(invalid_tag, "%Y.%m.%d")

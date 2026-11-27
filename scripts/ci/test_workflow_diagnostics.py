@@ -4,8 +4,8 @@
 from pathlib import Path
 import unittest
 
-CI_WORKFLOW = Path(".github/workflows/android-ci.yml")
-RELEASE_WORKFLOW = Path(".github/workflows/android-release.yml")
+CI_WORKFLOW = Path(".github/workflows/ci.yml")
+RELEASE_WORKFLOW = Path(".github/workflows/release.yml")
 QUICKSTART = Path("specs/002-github-actions-android-cicd/quickstart.md")
 
 
@@ -17,9 +17,9 @@ class WorkflowDiagnosticsTests(unittest.TestCase):
         cls.quickstart = QUICKSTART.read_text(encoding="utf-8")
 
     def test_named_stages(self) -> None:
-        for stage in ("Set up Java 17", "Set up Android SDK API 36", "Run detekt", "Run debug unit tests"):
+        for stage in ("Set up Java 17", "Set up Android SDK API 36", "Set up Flutter", "Run flutter analyze", "Run Android unit tests"):
             self.assertIn(stage, self.ci)
-        for stage in ("Assemble release APK", "Sign and verify release APK", "Publish GitHub Release"):
+        for stage in ("Configure Android signing", "Build and verify signed Android release", "Publish GitHub Release"):
             self.assertIn(stage, self.release)
 
     def test_artifacts_and_readiness_evidence(self) -> None:
