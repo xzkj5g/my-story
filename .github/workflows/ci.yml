@@ -85,13 +85,6 @@ jobs:
           GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
         run: scripts/ci/configure_google_sign_in.sh
 
-      - name: Build Android release APK
-        run: flutter build apk --release --dart-define-from-file=config/oauth.json
-
-      - name: Run Android unit tests
-        working-directory: android
-        run: ./gradlew --no-daemon testDebugUnitTest
-
       - name: Select iOS simulator
         id: simulator
         run: echo "udid=$(scripts/ci/select_ios_simulator.sh)" >> "$GITHUB_OUTPUT"
@@ -121,6 +114,13 @@ jobs:
           set -euo pipefail
           mkdir -p build/artifacts
           ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app build/artifacts/MyStory-ios-unsigned.zip
+
+      - name: Build Android release APK
+        run: flutter build apk --release --dart-define-from-file=config/oauth.json
+
+      - name: Run Android unit tests
+        working-directory: android
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
 
       - name: Upload Android APK
         if: ${{ !cancelled() }}

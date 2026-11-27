@@ -54,7 +54,7 @@ Requirements: Flutter 3.50 (Dart 3.14), JDK 17 and the Android SDK for Android, 
 flutter pub get
 flutter run                       # a connected device or emulator
 flutter analyze && flutter test   # Dart checks
-(cd android && ./gradlew testDebugUnitTest)   # Kotlin engine unit tests
+(cd android && ./gradlew :app:testDebugUnitTest)   # Kotlin engine unit tests
 ```
 
 YouTube sign-in needs OAuth client ids; without them the app runs and Settings says sign-in is not

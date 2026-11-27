@@ -17,7 +17,7 @@ Flutter 3.50.1, Java 17, Android API 36 and stable major-version action tags:
 Jobs:
 
 1. `checks` (Ubuntu): validates the workflows (`scripts/ci`), `flutter analyze`, `flutter test`.
-2. `build` (macOS, after `checks`): Android unit tests (`android/gradlew testDebugUnitTest`), release APK,
+2. `build` (macOS, after `checks`): Android unit tests (`android/gradlew :app:testDebugUnitTest`), release APK,
    iOS native XCTests on an iPhone simulator (`scripts/ci/select_ios_simulator.sh` picks the device),
    and an unsigned release iOS app (`TARGETED_DEVICE_FAMILY=1,2`, so it covers iPhone and iPad).
 

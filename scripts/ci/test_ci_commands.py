@@ -16,7 +16,7 @@ class CiCommandTests(unittest.TestCase):
         for command in (
             "flutter analyze",
             "flutter test",
-            "./gradlew --no-daemon testDebugUnitTest",
+            "./gradlew --no-daemon :app:testDebugUnitTest",
             "flutter build apk --release --dart-define-from-file=config/oauth.json",
             "flutter build ios --simulator --debug --dart-define-from-file=config/oauth.json",
             "xcodebuild test",

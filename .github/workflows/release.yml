@@ -141,7 +141,7 @@ jobs:
 
       - name: Run Android unit tests
         working-directory: android
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
 
       - name: Build unsigned iOS release
         run: |
