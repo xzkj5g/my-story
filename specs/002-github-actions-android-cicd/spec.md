@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-18
 
-**Status**: Draft
+**Status**: Superseded by `003-cross-platform-flutter-app` (the workflows are now `ci.yml` and `release.yml`, built with Flutter on macOS)
 
 **Input**: User description: "As a developer i want to have working CICD pipeline on github using github action solution, so that i can trigger android build and release process from default branch on demand"
 

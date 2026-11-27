@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-17
 
-**Status**: Draft
+**Status**: Draft (engine retained; the Compose UI described here was replaced by the Flutter UI in `003-cross-platform-flutter-app`)
 
 **Input**: User description: "i want to have an android native app to output a video from selected videos on device. a couple of features must have: 1) user should be able to define output video resolution, aspect ratio, frame-rate. 2) the output video is compiled in a sequential way from the selected ones, and user should be able to re-order the sequence of the selected ones regardless the order when they were selected"
 Amendment: the user also wants to be able to select photos, not just videos, as part of the
