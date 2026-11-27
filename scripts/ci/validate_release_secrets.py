@@ -17,7 +17,7 @@ KEYSTORE_SUFFIXES = (".jks", ".keystore", ".p12")
 
 
 def main() -> int:
-    workflow = Path(".github/workflows/android-release.yml")
+    workflow = Path(".github/workflows/release.yml")
     if not workflow.exists():
         print(f"Missing {workflow}", file=sys.stderr)
         return 1

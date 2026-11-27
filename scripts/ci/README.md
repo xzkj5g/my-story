@@ -1,6 +1,6 @@
 # CI static checks
 
-Run from the `sdd-demo/` directory:
+Run from the repository root:
 
 ```sh
 python3 scripts/ci/validate_workflows.py

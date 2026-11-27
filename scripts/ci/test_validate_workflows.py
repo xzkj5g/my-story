@@ -6,18 +6,18 @@ import unittest
 
 import yaml
 
-WORKFLOW = Path(".github/workflows/android-ci.yml")
+WORKFLOW = Path(".github/workflows/ci.yml")
 EXPECTED_ACTIONS = (
     "actions/checkout@v6",
     "actions/setup-java@v6",
-    "gradle/actions/setup-gradle@v6",
+    "subosito/flutter-action@v2",
     "android-actions/setup-android@v4",
     "actions/upload-artifact@v7",
 )
 RELEASE_ACTIONS = (
     "actions/checkout@v6",
     "actions/setup-java@v6",
-    "gradle/actions/setup-gradle@v6",
+    "subosito/flutter-action@v2",
     "android-actions/setup-android@v4",
     "softprops/action-gh-release@v3",
 )
@@ -33,20 +33,22 @@ class ValidationWorkflowTests(unittest.TestCase):
         self.assertIn("on:", self.content)
         self.assertIn("pull_request:", self.content)
         self.assertIn("push:", self.content)
-        self.assertIn("branches: [main]", self.content)
+        self.assertIn("branches: [main, 'cursor/**']", self.content)
         self.assertIn("contents: read", self.content)
 
     def test_toolchain_and_action_tags(self) -> None:
         self.assertIn("java-version: '17'", self.content)
+        self.assertIn("flutter-version: ${{ env.FLUTTER_VERSION }}", self.content)
         self.assertIn("platforms;android-36", self.content)
         for action in EXPECTED_ACTIONS:
             self.assertIn(action, self.content)
 
-    def test_gradle_wrapper(self) -> None:
+    def test_gradle_wrapper_runs_from_the_android_module(self) -> None:
+        self.assertIn("working-directory: android", self.content)
         self.assertIn("./gradlew", self.content)
 
     def test_release_workflow_pins_every_planned_action(self) -> None:
-        release_content = Path(".github/workflows/android-release.yml").read_text(encoding="utf-8")
+        release_content = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
         for action in RELEASE_ACTIONS:
             self.assertIn(action, release_content)
         self.assertEqual(release_content.count("actions/upload-artifact@"), 0)

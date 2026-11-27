@@ -1,4 +1,4 @@
-name: Android Release
+name: Release
 
 on:
   workflow_dispatch:
@@ -12,13 +12,16 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-release-main
+  group: release-main
   cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.50.1'
 
 jobs:
   release:
-    name: Validate, sign, and publish release APK
-    runs-on: ubuntu-24.04
+    name: Validate, sign, and publish release builds
+    runs-on: macos-latest
     environment: release
     steps:
       - name: Check release branch
@@ -40,7 +43,7 @@ jobs:
             echo "Release tag must match YYYY.MM.DD." >&2
             exit 1
           fi
-          normalized_tag="$(date -u -d "${RELEASE_TAG//./-}" '+%Y.%m.%d' 2>/dev/null || true)"
+          normalized_tag="$(date -u -j -f '%Y.%m.%d' "$RELEASE_TAG" '+%Y.%m.%d' 2>/dev/null || true)"
           if [ "$normalized_tag" != "$RELEASE_TAG" ]; then
             echo "Release tag is not a valid calendar date." >&2
             exit 1
@@ -78,50 +81,73 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
 
-      - name: Run detekt
-        run: ./gradlew --no-daemon detekt
+      - name: Install Dart packages
+        run: flutter pub get
 
-      - name: Run debug unit tests
+      - name: Run flutter analyze
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Configure Google sign-in
+        env:
+          GOOGLE_SERVER_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+        run: scripts/ci/configure_google_sign_in.sh
+
+      - name: Run Android unit tests
+        working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest
 
-      - name: Assemble release APK
-        run: ./gradlew --no-daemon assembleRelease
-
-      - name: Sign and verify release APK
+      - name: Configure Android signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keystore="$RUNNER_TEMP/android-release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          {
+            echo "storeFile=$keystore"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
+          chmod 600 android/key.properties
+
+      - name: Build and verify signed Android release
+        env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           mkdir -p release-metadata
-          keystore="$RUNNER_TEMP/android-release.keystore"
-          unsigned_apk="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
-          if [ -z "$unsigned_apk" ]; then
-            echo "No release APK was produced." >&2
-            exit 1
-          fi
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
-          chmod 600 "$keystore"
+          flutter build apk --release --dart-define-from-file=config/oauth.json --build-number "$GITHUB_RUN_NUMBER"
+          flutter build appbundle --release --dart-define-from-file=config/oauth.json --build-number "$GITHUB_RUN_NUMBER"
+          cp build/app/outputs/flutter-apk/app-release.apk release-metadata/app-release.apk
+          cp build/app/outputs/bundle/release/app-release.aab release-metadata/app-release.aab
           build_tools="${ANDROID_HOME}/build-tools/36.0.0"
-          "$build_tools/zipalign" -f 4 "$unsigned_apk" "$RUNNER_TEMP/aligned-release.apk"
-          "$build_tools/apksigner" sign \
-            --ks "$keystore" \
-            --ks-key-alias "$ANDROID_KEY_ALIAS" \
-            --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" \
-            --key-pass "pass:$ANDROID_KEY_PASSWORD" \
-            --out release-metadata/app-release.apk \
-            "$RUNNER_TEMP/aligned-release.apk"
           "$build_tools/apksigner" verify --verbose --print-certs release-metadata/app-release.apk \
             > release-metadata/certificate.txt
-          sha256sum release-metadata/app-release.apk > release-metadata/app-release.apk.sha256
+          shasum -a 256 release-metadata/app-release.apk > release-metadata/app-release.apk.sha256
           printf 'source_revision=%s\nrelease_tag=%s\n' "$GITHUB_SHA" "$RELEASE_TAG" \
             > release-metadata/release.txt
+
+      - name: Build unsigned iOS release
+        run: |
+          set -euo pipefail
+          flutter build ios --release --no-codesign --dart-define-from-file=config/oauth.json --build-number "$GITHUB_RUN_NUMBER"
+          ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app release-metadata/MyStory-ios-unsigned.zip
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
@@ -133,7 +159,9 @@ jobs:
           files: |
             release-metadata/app-release.apk
             release-metadata/app-release.apk.sha256
+            release-metadata/app-release.aab
             release-metadata/certificate.txt
+            release-metadata/MyStory-ios-unsigned.zip
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -141,7 +169,7 @@ jobs:
         if: ${{ always() }}
         run: |
           rm -f "$RUNNER_TEMP/android-release.keystore"
-          rm -f "$RUNNER_TEMP/aligned-release.apk"
+          rm -f android/key.properties
 
       - name: Write release workflow summary
         if: ${{ always() }}
@@ -149,11 +177,11 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           {
-            echo "## Android release"
+            echo "## Release"
             echo
             echo "- Source branch: \`main\`"
             echo "- Release tag: \`$RELEASE_TAG\`"
             echo "- Source revision: \`$GITHUB_SHA\`"
-            echo "- Stages: setup, validation, release build, signing, verification, and publication."
-            echo "- Signed APK, certificate fingerprint, and SHA-256 checksum are attached when publication succeeds."
+            echo "- Stages: setup, validation, Android signing, verification, unsigned iOS build, and publication."
+            echo "- The signed APK and AAB, certificate fingerprint, SHA-256 checksum, and unsigned iOS app are attached when publication succeeds."
           } >> "$GITHUB_STEP_SUMMARY"
